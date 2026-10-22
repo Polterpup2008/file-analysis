@@ -1,0 +1,6 @@
+* text=auto eol=lf
+# These exact bytes are pinned by SHA-256; do not normalize them on checkout.
+vendor/json.hpp -text
+vendor/JSON-LICENSE.txt -text whitespace=-blank-at-eol
+tools/c2patool/offline.toml -text whitespace=cr-at-eol
+tools/c2patool/c2pa-trust-list.pem -text
