@@ -1,0 +1,11 @@
+[core]
+allowed_network_hosts = []
+decode_identity_assertions = false
+max_decompressed_manifest_size_in_mb = 16
+backing_store_memory_threshold_in_mb = 16
+[verify]
+verify_after_reading = true
+verify_trust = true
+verify_timestamp_trust = true
+remote_manifest_fetch = false
+ocsp_fetch = false
