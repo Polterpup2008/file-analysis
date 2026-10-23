@@ -56,3 +56,74 @@ r=random.Random(123)
 for i in range(48):
     (p/f'fuzz-{i}.bin').write_bytes((b'\x89PNG\r\n\x1a\n' if i%2 else b'\xff\xd8\xff')+r.randbytes(i*71))
 print(f'Generated fixtures in {p}')
+
+# Synthetic EXIF/XMP camera claims. These are fixtures, not real capture evidence.
+# An ordinary TIFF IFD tree is embedded unchanged in PNG eXIf and JPEG APP1.
+def camera_tiff():
+    data = bytearray(b'II\x2a\0\0\0\0\0')
+    def ascii_value(value):
+        payload = value.encode('ascii') + b'\0'
+        return 2, len(payload), payload
+    def short(value): return 3, 1, struct.pack('<H', value)
+    def long(value): return 4, 1, struct.pack('<I', value)
+    def rational(*values):
+        return 5, len(values), b''.join(struct.pack('<II', *value) for value in values)
+    def ifd(entries):
+        if len(data) % 2: data.append(0)
+        offset = len(data)
+        entries = sorted(entries)
+        data.extend(struct.pack('<H', len(entries)) + bytes(12 * len(entries) + 4))
+        for index, (tag, (kind, count, payload)) in enumerate(entries):
+            pos = offset + 2 + 12 * index
+            struct.pack_into('<HHI', data, pos, tag, kind, count)
+            if len(payload) <= 4: data[pos+8:pos+12] = payload.ljust(4, b'\0')
+            else:
+                if len(data) % 2: data.append(0)
+                struct.pack_into('<I', data, pos+8, len(data))
+                data.extend(payload)
+        return offset
+    gps = ifd([(0, (1, 4, b'\2\3\0\0')), (1, ascii_value('N')),
+               (2, rational((0, 1), (0, 1), (0, 1))), (3, ascii_value('E')),
+               (4, rational((0, 1), (0, 1), (0, 1)))])
+    exif = ifd([(0x829a, rational((1, 125))), (0x829d, rational((28, 10))),
+                (0x8827, short(200)), (0x9000, (7, 4, b'0232')),
+                (0x9003, ascii_value('2024:06:15 12:34:56')),
+                (0x9011, ascii_value('+02:00')), (0x9209, short(0)),
+                (0x920a, rational((35, 1))), (0x9291, ascii_value('123')),
+                (0xa001, short(1)), (0xa002, long(1)), (0xa003, long(1)),
+                (0xa405, short(52)), (0xa431, ascii_value('FIXTURE-ONLY-001')),
+                (0xa433, ascii_value('Fixture Optics')),
+                (0xa434, ascii_value('35mm F2.8 fixture lens')),
+                (0xa435, ascii_value('FIXTURE-LENS-002'))])
+    root = ifd([(0x010f, ascii_value('Fixture Camera Co')),
+                (0x0110, ascii_value('Fixture Phone 4')),
+                (0x011a, rational((72, 1))), (0x011b, rational((72, 1))),
+                (0x0128, short(2)), (0x8769, long(exif)), (0x8825, long(gps))])
+    struct.pack_into('<I', data, 4, root)
+    return bytes(data)
+
+photo_exif = camera_tiff()
+png('camera.png', chunk('eXIf', photo_exif))
+(p/'camera.tiff').write_bytes(photo_exif)  # Metadata-only TIFF: no pixel decoding is claimed.
+xmp_camera = b'''<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:tiff="http://ns.adobe.com/tiff/1.0/" tiff:Make="Other Fixture Co" tiff:Model="Conflicting Fixture Model"/></rdf:RDF></x:xmpmeta>'''
+png('camera-conflict.png', chunk('eXIf', photo_exif) + chunk('iTXt', b'XML:com.adobe.xmp\0\0\0\0\0' + xmp_camera))
+png('camera-xmp-only.png', chunk('iTXt', b'XML:com.adobe.xmp\0\0\0\0\0' + xmp_camera))
+
+# Reuse only the ordinary JPEG image data from the pinned signed test asset;
+# strip its APP1..APP15 metadata so this generated fixture has no C2PA claims.
+signed_sample = p/'c2pa-signed.jpg'
+if signed_sample.exists():
+    original = signed_sample.read_bytes()
+    jpeg_image = bytearray(original[:2]); position = 2
+    while position < len(original):
+        start = position
+        if original[position] != 255: raise ValueError('Unexpected JPEG fixture marker')
+        while original[position] == 255: position += 1
+        marker = original[position]; position += 1
+        if marker in (0xda, 0xd9):
+            jpeg_image.extend(original[start:]); break
+        length = struct.unpack_from('>H', original, position)[0]
+        if not 0xe1 <= marker <= 0xef: jpeg_image.extend(original[start:position+length])
+        position += length
+    app1 = b'Exif\0\0' + photo_exif
+    (p/'camera.jpg').write_bytes(jpeg_image[:2] + b'\xff\xe1' + struct.pack('>H', len(app1)+2) + app1 + jpeg_image[2:])

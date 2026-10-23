@@ -12,7 +12,7 @@ int wmain(int argc,wchar_t** argv){try{
  check(argc==2||argc==3,"Expected fixtures and optional real analysis report");
  std::atomic_bool cancel=false;Options options;options.useParser=false;options.useC2pa=false;
  auto clean=analyze(fs::path(argv[1])/L"clean.png",options,cancel);auto before=clean.json();auto plain=simpleFindings(clean);
- check(plain.size()==1&&has(plain,"No additional clues recovered"),"Plain image gets an honest empty finding, not a properties replica");
+ check(plain.size()==1&&has(plain,"Not evaluated")&&has(plain,"metadata reader unavailable"),"Native-only image does not claim that device metadata was checked");
  check(!has(plain,"SHA-256")&&!has(plain,"Filesystem creation")&&!has(plain,"PNG width"),"Routine file properties omitted");
  check(clean.json()==before,"Simple projection leaves original evidence unchanged");
  auto broken=analyze(fs::path(argv[1])/L"bad-crc.png",options,cancel);auto warnings=simpleFindings(broken);
