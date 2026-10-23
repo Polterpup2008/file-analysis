@@ -1,0 +1,47 @@
+[
+  {
+    "name": "upstream-BMP.bmp",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/BMP.bmp",
+    "sha256": "fab182ec28064483847443e29982d592b64d7019fc4f1db85e02501a40e1dcf8"
+  },
+  {
+    "name": "upstream-ExifTool.tif",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/ExifTool.tif",
+    "sha256": "ba7bd9a71eb2bb5a93ceaf851d4616d5df24f4cff752183045b679dd7ce65bce"
+  },
+  {
+    "name": "upstream-FLAC.flac",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/FLAC.flac",
+    "sha256": "9cf5089a7ef8c6d06fd34eb193c8dc1bfb446c4ea00c797f6611819d1687d49a"
+  },
+  {
+    "name": "upstream-GIF.gif",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/GIF.gif",
+    "sha256": "55f8d30ea6fac980f35d5af11a90b10ddc0186d961b0273e66df2f8b7c5aa6be"
+  },
+  {
+    "name": "upstream-MP3.mp3",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/MP3.mp3",
+    "sha256": "9140f4708d4fa744651125486d287c2f2a7daab2caf83bfec9b17159486a746e"
+  },
+  {
+    "name": "upstream-Matroska.mkv",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Matroska.mkv",
+    "sha256": "9781505f6fd4262f045e0e4ec28e9ce93b9a1d5fa27a05e76f3fe7e26e0f0710"
+  },
+  {
+    "name": "upstream-QuickTime.heic",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/QuickTime.heic",
+    "sha256": "4e1785e9924600d0274176f52609a2d514481877103b91c714bd2088ea803ae7"
+  },
+  {
+    "name": "upstream-QuickTime.mov",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/QuickTime.mov",
+    "sha256": "eea529609b6026e0cd7b3d9188b997889f905cd89a93421ad7a9063c670449ec"
+  },
+  {
+    "name": "upstream-RIFF.webp",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/RIFF.webp",
+    "sha256": "054fb882674304992a0af031a77df061c3f802c30891dbb8bc2d16e41213767d"
+  }
+]

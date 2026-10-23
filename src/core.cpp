@@ -1,5 +1,7 @@
 #include "core.hpp"
 #include "insights.hpp"
+#include "previews.hpp"
+#include "generation_formats.hpp"
 #include "format_registry.hpp"
 #include <bcrypt.h>
 #include <algorithm>
@@ -140,10 +142,15 @@ bool extensionMatches(const Result& r) {
 }
 }
 std::string sha256File(const fs::path& path,std::atomic_bool& cancel){Reader file(path,cancel);return file.hash(0,file.size);}
+std::string sha256Bytes(std::span<const unsigned char> bytes){Hash hash(BCRYPT_SHA256_ALGORITHM);for(size_t p=0;p<bytes.size();){auto n=std::min<size_t>(65536,bytes.size()-p);hash.add(bytes.data()+p,n);p+=n;}return hash.finish();}
 Json Result::json() const {
  Json j={{"path",utf8(path.wstring())},{"format_signature",format},{"status",status},{"size",size},{"fields",Json::array()},{"blocks",Json::array()},{"structure_summary",structureGroups(*this)},{"errors",errors},{"generation",generation},{"photo",photo},{"origin_summary",origin},{"privacy",privacy},{"provenance",provenance},{"c2patool_report",c2paReport},{"exiftool_interpreted",parser},{"exiftool_numeric",parserNumeric}};
  for(auto& f:fields)j["fields"].push_back({{"category",f.category},{"name",f.name},{"value",f.value},{"raw",f.raw},{"source",f.source},{"offset",f.offset?Json(*f.offset):Json(nullptr)},{"size",f.size?Json(*f.size):Json(nullptr)},{"warning",f.warning}});
- for(auto& b:blocks)j["blocks"].push_back({{"type",b.type},{"offset",b.offset},{"size",b.size},{"sha256",b.sha256},{"note",b.note}});return j;
+ for(auto& b:blocks)j["blocks"].push_back({{"type",b.type},{"offset",b.offset},{"size",b.size},{"sha256",b.sha256},{"note",b.note}});
+ j["embedded_previews"]={{"status",previewStatus},{"items",Json::array()}};for(const auto& p:previews)j["embedded_previews"]["items"].push_back({{"source_field",p.field},{"format",p.format},{"size",p.bytes.size()},{"sha256",p.sha256},{"width",p.width},{"height",p.height},{"viewable",p.viewable},{"warning",p.warning},{"offset",nullptr},{"snapshot","Recovered bytes retained at scan time; export separately for exact payload"}});return j;
+}
+bool metadataReadSucceeded(const Result& r){
+ if(!r.parser.is_object())return false;for(auto it=r.parser.begin();it!=r.parser.end();++it)if(it.key().starts_with("ExifTool:")&&it.key().ends_with(":Error")&&!it.value().is_null()&&it.value()!=Json(""))return false;return true;
 }
 Result analyze(const fs::path& path,const Options& options,std::atomic_bool& cancel,const std::function<void(unsigned)>& progress) {
  Result r;r.path=fs::absolute(path).lexically_normal();
@@ -177,6 +184,9 @@ Result analyze(const fs::path& path,const Options& options,std::atomic_bool& can
   analyzeProvenance(r,options,cancel);
   parseGeneration(r);
   summarizePhoto(r);
+  analyzePreviews(r,options,cancel);
+  field(r,"Embedded resources","Preview extraction status",r.previewStatus,"ExifTool binary extraction",nullptr,{}, {},"Selected binary tags only; no original image or metadata is modified.");
+  for(const auto& p:r.previews)field(r,"Embedded resources",p.field+" (recovered payload)",Json{{"format",p.format},{"size",p.bytes.size()},{"sha256",p.sha256},{"width",p.width},{"height",p.height},{"viewable",p.viewable}},"ExifTool binary extraction",nullptr,{}, {},p.warning);
   summarizeInsights(r);
   std::map<std::string,std::vector<std::string>> texts;for(auto& t:r.fields)if(t.category=="PNG text")texts[t.name].push_back(display(t.value));for(auto& [key,values]:texts)if(values.size()>1){std::set<std::string> distinct(values.begin(),values.end());r.errors.push_back("Duplicate PNG text keyword "+key+" ("+std::to_string(values.size())+" entries)"+(distinct.size()>1?"; values conflict":""));}
   field(r,"Limitations","Attribution limits","Embedded authors, software names and public identifiers are claims; they do not establish identity. C2PA validation does not establish the truth of recorded actions. PDF signature validation and Authenticode verification are not implemented. Filesystem timestamps are not generation timestamps; copying or downloading can make local creation later than modification.");
@@ -189,15 +199,16 @@ Result analyze(const fs::path& path,const Options& options,std::atomic_bool& can
 void parseGeneration(Result& r) {
  std::set<std::pair<std::string,std::string>> seen;
  auto add=[&](const std::string& source,const std::string& name,Json value){r.generation.push_back({{"source_field",source},{"name",name},{"value",value},{"interpretation","Unverified embedded generation metadata"}});};
- // Recognize only two verified conventions. Preserve all other data as ordinary metadata.
+ // Each recognizer is a convention, not proof of generator identity.
  for(auto& f:r.fields) {
-  if(!f.value.is_string())continue;auto text=f.value.get<std::string>();if(text.size()>MiB)continue;
+  if(!f.value.is_string()||f.category=="Analysis diagnostics"||f.category=="Derived values")continue;auto text=f.value.get<std::string>();if(text.size()>MiB)continue;
   auto n=lower(f.name);auto pos=n.find_last_of(':');if(pos!=std::string::npos)n=n.substr(pos+1);
   if(!seen.insert({n,text}).second)continue;
-  if(n=="prompt"||n=="workflow") {
+  auto first=text.find_first_not_of(" \r\n\t");
+  if((n=="prompt"||n=="workflow")&&first!=text.npos&&(text[first]=='{'||text[first]=='[')) {
    try{size_t depth=0;auto j=Json::parse(text,[&](int,Json::parse_event_t e,Json&){if(e==Json::parse_event_t::array_start||e==Json::parse_event_t::object_start)require(++depth<=64,"Workflow nesting limit");if(e==Json::parse_event_t::array_end||e==Json::parse_event_t::object_end)--depth;return true;});bool recognized=n=="workflow"?j.is_object()&&j.contains("nodes")&&j["nodes"].is_array():false;
-    if(n=="prompt"&&j.is_object())for(auto& node:j)if(node.is_object()&&node.contains("class_type")&&node.contains("inputs"))recognized=true;
-    if(recognized){add(f.name,n=="workflow"?"ComfyUI workflow JSON":"ComfyUI API prompt JSON",j);if(n=="prompt")for(auto it=j.begin();it!=j.end();++it)if(it->is_object()&&it->contains("inputs"))add(f.name,"Node "+it.key()+" inputs ("+it->value("class_type",std::string("unknown"))+")",(*it)["inputs"]);}
+    if(n=="prompt"&&j.is_object())for(auto& node:j)if(node.is_object()&&node.contains("class_type")&&node["class_type"].is_string()&&node.contains("inputs")&&node["inputs"].is_object())recognized=true;
+    if(recognized){add(f.name,n=="workflow"?"ComfyUI workflow JSON":"ComfyUI API prompt JSON",j);if(n=="prompt")for(auto it=j.begin();it!=j.end();++it)if(it->is_object()&&it->contains("class_type")&&(*it)["class_type"].is_string()&&it->contains("inputs")&&(*it)["inputs"].is_object())add(f.name,"Node "+it.key()+" inputs ("+it->value("class_type",std::string("unknown"))+")",(*it)["inputs"]);}
    }catch(const std::exception& e){r.errors.push_back("Generation JSON in "+f.name+": "+e.what());}
   }
   if(n=="parameters"||n=="usercomment") {
@@ -211,8 +222,9 @@ void parseGeneration(Result& r) {
    for(size_t i=0;i<=last.size();++i){char c=i<last.size()?last[i]:',';if(c=='"'&&!escaped)quoted=!quoted;if(!quoted){if(c=='['||c=='{'||c=='(')++brackets;if(c==']'||c=='}'||c==')')--brackets;}if(c==','&&!quoted&&brackets==0){auto part=last.substr(begin,i-begin);auto colon=part.find(": ");if(colon!=std::string::npos){auto key=part.substr(0,colon);key.erase(0,key.find_first_not_of(" \r\n"));add(f.name,key,part.substr(colon+2));}begin=i+1;}escaped=c=='\\'&&!escaped;}
   }
  }
+ parseStructuredGeneration(r);
  field(r,"Generation parameters","Model parameters result",r.generation.empty()?"No model, prompt or seed parameters recovered by the implemented parameter recognizers. AI provenance is reported separately; absent parameters do not determine whether an image was AI-generated.":"Recovered embedded generation parameters; claims can be edited or forged.");
- field(r,"Limitations","Generation recognizers","ComfyUI workflow/API prompt JSON and AUTOMATIC1111-compatible infotext only. Forge may use the same convention; generator identity is not inferred. InvokeAI, Fooocus and NovelAI-specific decoding is not implemented.");
+ field(r,"Limitations","Generation recognizers","ComfyUI workflow/API prompt JSON, AUTOMATIC1111-compatible infotext (including compatible Forge exports), InvokeAI named JSON records, marker-qualified Fooocus JSON and visible NovelAI JSON. Generator identity is not authenticated. Legacy InvokeAI dream/sd-metadata, NovelAI pixel steganography and vendor signature verification are not implemented.");
 }
 Json compare(const Result& a,const Result& b,std::atomic_bool* cancel) {
  if(cancel&&*cancel)throw std::runtime_error("Comparison cancelled");
@@ -264,6 +276,7 @@ void exportReport(const fs::path& dest,const Json& report,const std::string& for
   row({"","Export","CSV safety","Formula-leading cells are prefixed with an apostrophe. JSON preserves exact values.","Export","","","",""});
  }else throw std::runtime_error("Unknown export format");require(FlushFileBuffers(h)!=0,"Cannot flush export");
 }
+void extractPreview(const Result& r,size_t index,const fs::path& dest,std::atomic_bool* cancel){require(index<r.previews.size(),"Preview index is out of range");require(!cancel||!*cancel,"Preview export cancelled");const auto& preview=r.previews[index];require(sha256Bytes(preview.bytes)==preview.sha256,"Cached preview hash mismatch");auto out=outputFile(dest,{r.path});write(out,std::string_view(reinterpret_cast<const char*>(preview.bytes.data()),preview.bytes.size()),cancel);require(FlushFileBuffers(out)!=0,"Cannot flush extracted preview");}
 std::string hexPage(const fs::path& path,uint64_t offset,size_t count){std::atomic_bool cancel=false;Reader f(path,cancel);require(offset<=f.size,"Hex offset is beyond EOF");auto b=f.read(offset,static_cast<size_t>(std::min<uint64_t>(std::min<size_t>(count,4096),f.size-offset)));std::ostringstream out;for(size_t i=0;i<b.size();i+=16){out<<std::hex<<std::setw(16)<<std::setfill('0')<<offset+i<<"  ";for(size_t j=0;j<16;++j)if(i+j<b.size())out<<std::setw(2)<<unsigned(b[i+j])<<' ';else out<<"   ";out<<" |";for(size_t j=0;j<16&&i+j<b.size();++j)out<<char(b[i+j]>=32&&b[i+j]<127?b[i+j]:'.');out<<"|\r\n";}return out.str();}
 void extractBlock(const fs::path& source,const Block& b,const fs::path& dest,std::atomic_bool* cancel){std::atomic_bool stop=false;Reader f(source,cancel?*cancel:stop);require(b.offset<=f.size&&b.size<=f.size-b.offset,"Block no longer fits file");require(f.hash(b.offset,b.size)==b.sha256,"Source block changed since analysis; rescan before extraction");auto out=outputFile(dest,{source});std::array<unsigned char,65536>buf;for(uint64_t p=0;p<b.size;){size_t n=static_cast<size_t>(std::min<uint64_t>(buf.size(),b.size-p));f.read(b.offset+p,buf.data(),n);write(out,std::string_view(reinterpret_cast<char*>(buf.data()),n),cancel);p+=n;}require(FlushFileBuffers(out)!=0,"Cannot flush extracted block");}
 }

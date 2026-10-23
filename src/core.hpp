@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <functional>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 #include "json.hpp"
@@ -23,11 +24,14 @@ struct Field {
  std::optional<uint64_t> offset, size;
 };
 struct Block { std::string type, note, sha256; uint64_t offset=0, size=0; };
+struct PreviewResource {std::string field,format,sha256,warning;std::vector<unsigned char> bytes;uint32_t width=0,height=0;bool viewable=false;};
 struct Result {
  fs::path path; std::string format="Unknown", status="complete";
  uint64_t size=0;
  std::vector<Field> fields;
  std::vector<Block> blocks;
+ std::vector<PreviewResource> previews;
+ std::string previewStatus="not_evaluated";
  std::vector<std::string> errors;
  Json parser, parserNumeric, generation=Json::array(), provenance, c2paReport, photo, origin, privacy;
  Json json() const;
@@ -37,8 +41,13 @@ struct ProcessResult { std::string out, err; DWORD exitCode=0; };
 std::string utf8(std::wstring_view s);
 std::wstring wide(std::string_view s);
 std::string display(const Json& j);
+bool metadataReadSucceeded(const Result&);
 std::string sha256File(const fs::path&, std::atomic_bool&);
+std::string sha256Bytes(std::span<const unsigned char>);
+size_t previewBytes(const Result&);
+void extractPreview(const Result&,size_t,const fs::path&,std::atomic_bool* cancel=nullptr);
 ProcessResult runParser(const fs::path&, const fs::path&, bool numeric, std::atomic_bool&, DWORD timeout);
+ProcessResult runPreviewParser(const fs::path&,const fs::path&,std::atomic_bool&,DWORD timeout,bool recoverMalformed=false);
 ProcessResult runC2pa(const fs::path&, const fs::path&, std::atomic_bool&, DWORD timeout);
 Json boundedJson(std::string_view text, size_t maxDepth=128, size_t maxNodes=250000);
 std::string metadataCategory(std::string_view key);

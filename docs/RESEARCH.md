@@ -10,6 +10,23 @@
 
 Remaining inference limits are recorded in README and in each result. No model, account, seed, prompt, physical creator identity or watermark presence is inferred from application names or signature trust.
 
+## Batch search — 0.7.0
+
+- **Documented:** [FindNLSStringEx](https://learn.microsoft.com/en-us/windows/win32/api/winnls/nf-winnls-findnlsstringex) supports invariant-locale Unicode searching with `NORM_IGNORECASE`, explicit lengths and the matched span. Linguistic equivalence may match different binary representations. Search uses this only for navigation; evidence equality, hashes and comparison remain exact.
+- **Implementation:** convert/search overlapping 64 KiB UTF-8 chunks with cancellation points, retain bounded context and source indices, and cap results at 5000. An explicit Find action avoids starting full-batch searches for every keystroke. The GUI does not rescan originals during search.
+
+## Additional generation conventions — 0.9.0
+
+- **Documented:** [InvokeAI media metadata](https://invoke-ai.github.io/InvokeAI-7/development/architecture/media-metadata/) names the generation, workflow and executed-graph JSON keys. The generation record carries optional prompt/settings/model/LoRA properties. The implementation retains full objects and interprets known properties without supplying absent values. Graph/workflow checks are structural recognition, not full application-schema validation.
+- **Documented:** [Fooocus metadata writer](https://github.com/lllyasviel/Fooocus/blob/main/modules/meta_parser.py) writes JSON parameters, model/hash, expanded prompts and LoRA data; [MetadataScheme](https://github.com/lllyasviel/Fooocus/blob/main/modules/flags.py) defines the explicit `fooocus` scheme. Recognition requires that marker or a Fooocus software claim. Tuple-like strings remain strings; application-side evaluation/import code is never reused.
+- **Documented:** [NovelAI's own metadata tools](https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_sig.py) distinguish visible PNG Comment JSON/EXIF from alpha-channel data and signature verification. This implementation handles visible marker-qualified JSON only. It retains signed_hash as data and does not assert vendor signature verification or pixel-steganography extraction.
+- **Observed:** deterministic generated fixtures exercise those visible conventions with the real native PNG reader. They verify byte preservation and metadata interpretation, not the factual origin of generated fixture contents. Legacy/undocumented variants remain outside these recognizers.
+
+## Build pipeline — 1.0 preparation
+
+- **Documented:** [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) supports branch/tag pushes, pull requests and manual runs with scoped permissions. The Windows workflow builds/test/packages and uploads artifacts; it has read-only repository permissions and does not overwrite public release assets. Action commit SHAs were verified against the official repositories' tag refs.
+- **Implementation:** bootstrap validates dependency and public test-fixture SHA-256 digests. Packaging requires committed sources, fresh install staging, version/tag agreement, a matching source ZIP and checksum manifest. Repeating the procedure is supported; bit-identical binaries across mutable MSVC/SDK/runner versions are not promised.
+
 ## Camera/capture summary — 0.4.0
 
 - **Documented:** The [ExifTool EXIF tag table](https://exiftool.org/TagNames/EXIF.html) maps `Make`/`Model` to device identity claims, `DateTimeOriginal` to original capture time, `OffsetTimeOriginal` to its timezone offset, `SubSecTimeOriginal` to its fractional seconds, and `SerialNumber` to EXIF BodySerialNumber. Lens identifiers, exposure, f-number, ISO, focal length, flash and GPS values have separate tags. Filesystem time is never a fallback capture time.

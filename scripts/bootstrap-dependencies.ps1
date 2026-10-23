@@ -47,4 +47,7 @@ Get-PinnedFile $taskLock.signed_test_fixture.url (Join-Path $taskRoot 'tests\fix
 Get-PinnedFile 'https://raw.githubusercontent.com/nlohmann/json/v3.12.0/LICENSE.MIT' (Join-Path $taskRoot 'vendor\JSON-LICENSE.txt') '46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603'
 Get-PinnedFile 'https://raw.githubusercontent.com/contentauth/c2patool/v0.28.2/LICENSE-MIT' (Join-Path $taskRoot 'tools\c2patool\LICENSE-MIT') '89375a50de90d2dcaa04406086da832ad452ebcaf6ab402ef3d51b8401a67c71'
 Get-PinnedFile 'https://raw.githubusercontent.com/contentauth/c2patool/v0.28.2/LICENSE-APACHE' (Join-Path $taskRoot 'tools\c2patool\LICENSE-APACHE') '86bdd5dafab77451044b6fd6d2efab23e3410ce658eb097f04c04f4f54aed62f'
-Write-Output 'Pinned dependencies and signed fixture are ready. Run scripts/build.ps1.'
+foreach ($taskFormatSample in (Get-Content -LiteralPath (Join-Path $taskRoot 'tests/format-fixtures.json') -Raw | ConvertFrom-Json)) {
+    Get-PinnedFile $taskFormatSample.url (Join-Path $taskRoot ('tests/fixtures/'+$taskFormatSample.name)) $taskFormatSample.sha256
+}
+Write-Output 'Pinned dependencies, signed fixture and public metadata test fixtures are ready. Run scripts/build.ps1.'

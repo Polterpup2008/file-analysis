@@ -1,0 +1,7 @@
+# File Analysis 0.9.0 development checkpoint
+
+Adds bounded recognition of documented InvokeAI named PNG JSON records, Fooocus JSON parameters with a Fooocus metadata marker, and visible NovelAI Comment JSON with a NovelAI marker. Recovered values include the available prompt/negative prompt, seed (including zero), steps, scale, sampler/scheduler, resolution, model records/hashes, LoRAs, VAE, ControlNet and denoising fields. Complete structured records retain unknown properties and can be exported through Export generation. No missing property is fabricated.
+
+These are compatible metadata conventions, not authenticated generator identity. NovelAI alpha-channel steganography and vendor signature verification are not implemented; signed_hash remains an unverified value. Legacy InvokeAI dream/sd-metadata records and Fooocus records without an explicit marker remain ordinary metadata. Workflow recognition checks documented container shapes; it does not execute or promise compatibility with every node/plugin/version.
+
+Structured recognition is limited to 1 MiB, depth 64, 20000 JSON nodes and 1024 interpreted entries per file. Invalid records produce findings while retaining original metadata. Nine suites pass, including generated fixture checks for the additional conventions, zero seeds, unknown-property retention, raw workflow shapes, malformed/oversized/deep JSON, source-byte preservation and Simple/origin integration. Final interactive validation remains pending.
