@@ -1,4 +1,4 @@
-param([string]$BuildDirectory = 'build-v03', [switch]$Package)
+param([string]$BuildDirectory = 'build-v04', [switch]$Package)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 Push-Location -LiteralPath $taskRoot
@@ -24,7 +24,10 @@ try {
     & $taskCtestPath --test-dir $BuildDirectory -C Release --output-on-failure
     if ($LASTEXITCODE) { throw 'Tests failed.' }
     if ($Package) {
-        & $taskCmakePath --install $BuildDirectory --config Release --prefix dist/FileAnalysis-0.3.0
+        $taskVersionMatch = [regex]::Match((Get-Content -LiteralPath 'CMakeLists.txt' -Raw), 'project\(FileAnalysis VERSION ([0-9]+\.[0-9]+\.[0-9]+) ')
+        if (!$taskVersionMatch.Success) { throw 'Cannot find the application version in CMakeLists.txt.' }
+        $taskVersion = $taskVersionMatch.Groups[1].Value
+        & $taskCmakePath --install $BuildDirectory --config Release --prefix "dist/FileAnalysis-$taskVersion"
         if ($LASTEXITCODE) { throw 'Portable installation failed.' }
     }
 } finally { Pop-Location }
