@@ -6,8 +6,6 @@ try {
     if (git status --porcelain --untracked-files=normal) { throw 'Commit source changes before packaging so the source ZIP matches the build.' }
     $taskCommit = (git rev-parse HEAD).Trim()
     if ($LASTEXITCODE) { throw 'Packaging requires a Git source checkout.' }
-    & (Join-Path $PSScriptRoot 'build.ps1') -BuildDirectory $BuildDirectory -Package
-    if ($LASTEXITCODE) { throw 'Build or tests failed.' }
     $taskVersion = [regex]::Match((Get-Content CMakeLists.txt -Raw),'project\(FileAnalysis VERSION ([0-9]+\.[0-9]+\.[0-9]+) ').Groups[1].Value
     if (!$taskVersion) { throw 'Application version missing.' }
     if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$taskVersion") { throw 'Release tag does not match the source version.' }
@@ -19,6 +17,8 @@ try {
     foreach ($taskDestination in @($taskBinary,$taskSource,$taskChecksums)) {
         if (Test-Path -LiteralPath $taskDestination) { throw "Release destination already exists: $taskDestination. Choose a fresh output directory." }
     }
+    & (Join-Path $PSScriptRoot 'build.ps1') -BuildDirectory $BuildDirectory -Package
+    if ($LASTEXITCODE) { throw 'Build or tests failed.' }
     # Fresh staging prevents obsolete files from an earlier install entering a release.
     $taskStage = Join-Path $taskRoot ('dist/package-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($taskStage) | Out-Null
