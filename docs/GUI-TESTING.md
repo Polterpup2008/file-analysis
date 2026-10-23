@@ -25,17 +25,19 @@ On Windows x64 at approximately 1240 x 800, the real 0.5 application was launche
 
 Local evidence: `tests/output/ui-0.5-simple.jpg` and `tests/output/gui-share-summary-0.5.json` (excluded from the repository). Keyboard navigation was used for the standard Save dialog because targeting its nested controls through accessibility was unreliable. Pointer-only file dialogs, min-size resizing, copy, multi-monitor/high-DPI combinations and every omission-checkbox combination were not all exercised interactively; omission combinations are covered by automated tests.
 
-## 1.0 candidate acceptance
+## 1.0 acceptance on Windows x64
 
-The 0.6 native viewer displayed the generated 160 x 96 gradient JPEG recovered from camera-preview.png. Inspection found a long resource label and a missing viewer title; both were corrected in source. Exact extraction bytes, decoding and pixel limits passed automated checks. Later native automation was blocked by a separate Windows Security prompt for nsys.exe; it was not dismissed or accepted automatically.
+On 2026-10-23, the portable artifact from hosted run 39904722147 (candidate head 97bf3c4, BUILD.txt source c467584, source tree equal to local fe77196) was extracted into a fresh directory and exercised through the actual Win32 UI. Two generated camera files showed useful Simple findings. ThumbnailImage displayed the 160 x 96 gradient with the corrected viewer title and source caption. Native Save-dialog extraction produced 2084 bytes, SHA-256 15c06b8c6b6ef92cd18fbae489fe518c9dac3b9736e31e292dff90f9b1e271b6, identical to embedded-preview.jpg. Batch Find returned three conflicting-model matches and Open match selected the correct source file and Device model field without rescanning.
 
-Remaining interactive checklist:
+Inspection found that LF-only JSON in a classic multiline EDIT control appeared on one horizontal line. The display boundary now converts LF to CRLF while preserving evidence/export values. The rebuilt 1.0 executable was launched and visually verified: selected metadata and comparison records show indented, multiline JSON. The following additional flows passed on that build:
 
-1. Launch the final portable candidate with camera-preview.png and camera-conflict.png. Confirm both file rows and readable Simple findings.
-2. Select ThumbnailImage; view the gradient and verify the viewer title/source caption. Close it, Extract preview to a new destination, and compare its SHA-256 with embedded-preview.jpg.
-3. Check Search all files, query the conflicting device model, press Find, select a result, and Open match. Verify the correct file/field is selected without rescanning. Test a zero-result query and category changes.
-4. Click Compare two with exactly two inputs; inspect Changed and Added/Removed categories, left/right details, then switch Simple/Detailed and Back to file.
-5. Exercise actual Open File/Open Folder/Scan, a safe generated batch, cancel on the generated >4 GiB sparse file, Copy/Ctrl+C, and full JSON/CSV/text plus generation exports. Verify full export content independently.
-6. Resize to the supported 1000 x 680 minimum; check toolbar wrapping, preview actions, table/detail scrolling and keyboard focus. Test errors/no metadata and clean closing during an active operation.
+- Compare two: left/right values, Added/Removed/Changed rows, full source detail, Simple/Detailed switching and Back to file.
+- Copy/Ctrl+C: copied a selected full record and pasted it into the app's query edit. Keyboard Tab focus was visible.
+- Native minimum-size resizing: reached the 1000 x 680 outer-window constraint (the capture excludes invisible frame borders); comparison's Back to file wrapped to a second toolbar row and controls remained accessible. Tables/details expose horizontal/vertical scrolling.
+- Open Folder followed by Scan: six generated camera, plain, generation, truncated and unknown fixtures completed, retaining five expected diagnostics across malformed/generation inputs.
+- Full JSON/CSV/text exports through the actual Save dialogs: six analyses, schema 5, raw parser fields and structure retained; local paths redacted. Text parsed to the same JSON object, CSV parsed with 575 rows including the header and Structure records. Generation export retained 14 records including the ComfyUI workflow.
+- SHA-256 comparisons confirmed all six scanned fixture files were unchanged.
+- Zero-match batch query explicitly reported zero rows; changing category cleared stale results.
+- Open File on the 5,368,709,121-byte sparse fixture, Cancel, and Scan again: cancellation was explicit and controls restored. Closing during a second active scan terminated the owned app without a remaining file-analysis/ExifTool/c2patool process.
 
-These are pending checks, not completed evidence. The final audit must record the actual candidate, environment, outcomes and any remaining gaps.
+Local screenshots and exported evidence live under tests/output/ and are excluded from Git. The original private Gemini image is never uploaded. Earlier security-prompt interference cleared externally; no security prompt or setting was automated. Multi-monitor/high-DPI combinations, assistive technologies, and a separate Windows 10 machine were not exhaustively tested. Automated suites cover decoder/resource bounds, Unicode, malformed metadata, destination protection, omission combinations and cancellation; these do not replace the interactive observations above.
