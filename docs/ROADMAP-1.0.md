@@ -12,6 +12,8 @@ The objective is the original native, offline C++20 application plus the agreed 
 - [x] Verify malformed/huge/Unicode/no-metadata/resource/conflict/duplicate inputs, parser bounds, unchanged originals and new-destination protection (ten suites / 440 local checks, plus private Gemini regression).
 - [x] Audit format claims against representative fixtures, separating recognition, metadata and native structure validation (82 format checks; see FORMAT-COVERAGE.md).
 - [x] Repeatable bootstrap/build/test/packaging and automated GitHub release builds with pinned dependencies/notices and private commit email (local package plus hosted Windows build; no bit-identical toolchain claim).
-- [ ] Complete a requirement/evidence audit, run the final executable, publish exact sources/executable/checksums and verify the public download.
+- [x] Complete a requirement/evidence audit, run the final executable, publish exact sources/executable/checksums and verify the public download.
 
 Recheck every original specification area: platform/UI; signature/hash/filesystem analysis; metadata provenance/duplicates/raw values; generation recognizers and honest absence; C2PA claims/integrity/trust/history; structure/hex/extraction; comparison; performance/cancellation/Unicode; exports/privacy; real/generated/malformed/batch/GUI tests; actual executable and build instructions. Existing documented decoder/recognizer limits must be audited rather than hidden by tests or wording. No inferred AI account/model/physical identity, online lookup, certificate purchase or security-setting change is assumed.
+
+Delivery completed on 2026-10-23: [1.0.0 release](https://github.com/Polterpup2008/file-analysis/releases/tag/v1.0.0), canonical source/tag 31924c2, final hosted regression 438 assertions, local package 440 assertions, and public Windows ZIP checksum verified. See AUDIT-1.0.md for exact digests and GUI-TESTING.md for interactive scope.
