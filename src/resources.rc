@@ -1,5 +1,34 @@
 #include <windows.h>
 #include "resources.h"
+#include "version.h"
+
+1 VERSIONINFO
+ FILEVERSION FA_VERSION_NUM
+ PRODUCTVERSION FA_VERSION_NUM
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+ FILEFLAGS 0
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0
+BEGIN
+ BLOCK "StringFileInfo"
+ BEGIN
+  BLOCK "040904b0"
+  BEGIN
+   VALUE "CompanyName", "Polterpup2008\0"
+   VALUE "FileDescription", "Offline metadata and file inspection\0"
+   VALUE "FileVersion", FA_VERSION_TEXT "\0"
+   VALUE "InternalName", "file-analysis\0"
+   VALUE "OriginalFilename", "file-analysis.exe\0"
+   VALUE "ProductName", "File Analysis\0"
+   VALUE "ProductVersion", FA_VERSION_TEXT "\0"
+  END
+ END
+ BLOCK "VarFileInfo"
+ BEGIN
+  VALUE "Translation", 0x0409, 1200
+ END
+END
 IDD_SHARE_REPORT DIALOGEX 0, 0, 365, 182
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Export share summary"
