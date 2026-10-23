@@ -29,7 +29,7 @@ struct Result {
  std::vector<Field> fields;
  std::vector<Block> blocks;
  std::vector<std::string> errors;
- Json parser, parserNumeric, generation=Json::array(), provenance, c2paReport, photo;
+ Json parser, parserNumeric, generation=Json::array(), provenance, c2paReport, photo, origin, privacy;
  Json json() const;
 };
 struct Options { fs::path exiftool, c2patool; DWORD parserTimeoutMs=20000; bool useParser=true, useC2pa=true; };

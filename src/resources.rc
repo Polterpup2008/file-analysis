@@ -1,0 +1,15 @@
+#include <windows.h>
+#include "resources.h"
+IDD_SHARE_REPORT DIALOGEX 0, 0, 365, 182
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Export share summary"
+FONT 9, "Segoe UI"
+BEGIN
+ LTEXT "Create a compact report. Source paths, raw data, full provenance, prompts, workflows and free text are omitted. Originals remain unchanged.", -1, 10, 10, 345, 28
+ AUTOCHECKBOX "Omit location and GPS metadata", IDC_OMIT_LOCATION, 12, 47, 338, 14
+ AUTOCHECKBOX "Omit device and document identifiers", IDC_OMIT_IDENTIFIERS, 12, 67, 338, 14
+ AUTOCHECKBOX "Omit names, contact details and rights claims", IDC_OMIT_PEOPLE, 12, 87, 338, 14
+ LTEXT "This is not guaranteed anonymization. Retained dates, software, camera names and file hashes may still identify a file or contain personal information. Review before sharing.", -1, 10, 111, 345, 30
+ DEFPUSHBUTTON "Choose file...", IDOK, 207, 155, 76, 16
+ PUSHBUTTON "Cancel", IDCANCEL, 290, 155, 65, 16
+END

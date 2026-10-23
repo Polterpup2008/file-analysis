@@ -1,5 +1,7 @@
 #include "core.hpp"
 #include "presentation.hpp"
+#include "insights.hpp"
+#include "resources.h"
 #include <commctrl.h>
 #include <commdlg.h>
 #include <shlobj.h>
@@ -15,7 +17,7 @@
 using namespace fa;
 namespace {
 constexpr UINT Done=WM_APP+1,Progress=WM_APP+2;
-enum {Open=100,Folder,Scan,Cancel,Export,Copy,Compare,Workflow,Extract,Files,Mode,Category,Search,Offset,Go,Prev,Next,Table,Detail,Info,Status,Bar,Recursive,Privacy,GroupIdat,Level,ViewLabel,SectionLabel};
+enum {Open=100,Folder,Scan,Cancel,Export,Copy,Compare,Workflow,Extract,Files,Mode,Category,Search,Offset,Go,Prev,Next,Table,Detail,Info,Status,Bar,Recursive,Privacy,GroupIdat,Level,ViewLabel,SectionLabel,Share};
 enum {SummaryView,MetadataView,StructureView,HexView,ComparisonView,ProvenanceView};
 struct Packet {std::vector<Result> files;std::vector<std::string> errors;Json comparison;std::wstring message;bool analysis=false;};
 struct Row {int kind;size_t index;}; // 0 field, 1 block, 2 generation, 3 error, 4 comparison; 9 simple finding
@@ -28,8 +30,8 @@ std::wstring trim(std::wstring s,size_t limit=4096){if(s.size()>limit){s.resize(
 void status(const std::wstring& s){SetWindowTextW(controls[Status],s.c_str());}
 void error(const std::exception& e){MessageBoxW(window,wide(e.what()).c_str(),L"File Analysis",MB_OK|MB_ICONERROR);}
 HWND make(int id,LPCWSTR cls,LPCWSTR caption,DWORD style,DWORD ex=0){auto h=CreateWindowExW(ex,cls,caption,WS_CHILD|WS_VISIBLE|style,0,0,1,1,window,reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),instance,nullptr);controls[id]=h;SendMessageW(h,WM_SETFONT,reinterpret_cast<WPARAM>(font),TRUE);return h;}
-void enable(){for(int id:{Open,Folder,Scan,Export,Compare,Workflow,Extract})EnableWindow(controls[id],!busy);EnableWindow(controls[Cancel],busy);EnableWindow(controls[Scan],!busy&&(!folder.empty()||!inputPaths.empty()));EnableWindow(controls[Export],!busy&&(!results.empty()||!batchErrors.empty()));EnableWindow(controls[Workflow],!busy&&selectedFile>=0&&!results[selectedFile].generation.empty());EnableWindow(controls[Compare],!busy&&results.size()>=2);int idx=ListView_GetNextItem(controls[Table],-1,LVNI_SELECTED);EnableWindow(controls[Copy],idx>=0||GetWindowTextLengthW(controls[Detail])>0);EnableWindow(controls[Extract],!busy&&selectedFile>=0&&idx>=0&&idx<static_cast<int>(rows.size())&&rows[idx].kind==1);}
-void layout(){RECT r{};GetClientRect(window,&r);int dpi=static_cast<int>(GetDpiForWindow(window));int w=MulDiv(r.right,96,dpi),h=MulDiv(r.bottom,96,dpi);auto place=[dpi](HWND control,int x,int y,int width,int height,BOOL repaint){MoveWindow(control,MulDiv(x,dpi,96),MulDiv(y,dpi,96),MulDiv(width,dpi,96),MulDiv(height,dpi,96),repaint);};bool concise=simple();int x=8;for(auto [id,width]:std::vector<std::pair<int,int>>{{Open,90},{Folder,90},{Scan,55},{Cancel,60},{Export,110},{Copy,70},{Compare,90},{Workflow,125},{Extract,115}}){bool visible=!concise||(id!=Compare&&id!=Workflow&&id!=Extract);ShowWindow(controls[id],visible?SW_SHOW:SW_HIDE);if(visible){place(controls[id],x,8,width,27,TRUE);x+=width+5;}}
+void enable(){for(int id:{Open,Folder,Scan,Export,Share,Compare,Workflow,Extract})EnableWindow(controls[id],!busy);EnableWindow(controls[Cancel],busy);EnableWindow(controls[Scan],!busy&&(!folder.empty()||!inputPaths.empty()));EnableWindow(controls[Export],!busy&&(!results.empty()||!batchErrors.empty()));EnableWindow(controls[Share],!busy&&!results.empty());EnableWindow(controls[Workflow],!busy&&selectedFile>=0&&!results[selectedFile].generation.empty());EnableWindow(controls[Compare],!busy&&results.size()>=2);int idx=ListView_GetNextItem(controls[Table],-1,LVNI_SELECTED);EnableWindow(controls[Copy],idx>=0||GetWindowTextLengthW(controls[Detail])>0);EnableWindow(controls[Extract],!busy&&selectedFile>=0&&idx>=0&&idx<static_cast<int>(rows.size())&&rows[idx].kind==1);}
+void layout(){RECT r{};GetClientRect(window,&r);int dpi=static_cast<int>(GetDpiForWindow(window));int w=MulDiv(r.right,96,dpi),h=MulDiv(r.bottom,96,dpi);auto place=[dpi](HWND control,int x,int y,int width,int height,BOOL repaint){MoveWindow(control,MulDiv(x,dpi,96),MulDiv(y,dpi,96),MulDiv(width,dpi,96),MulDiv(height,dpi,96),repaint);};bool concise=simple();int x=8;for(auto [id,width]:std::vector<std::pair<int,int>>{{Open,90},{Folder,90},{Scan,55},{Cancel,60},{Export,110},{Share,115},{Copy,70},{Compare,90},{Workflow,125},{Extract,115}}){bool visible=!concise||(id!=Compare&&id!=Workflow&&id!=Extract);ShowWindow(controls[id],visible?SW_SHOW:SW_HIDE);if(visible){place(controls[id],x,8,width,27,TRUE);x+=width+5;}}
  place(controls[Recursive],8,40,220,23,TRUE);place(controls[Privacy],235,40,250,23,TRUE);place(controls[GroupIdat],495,40,230,23,TRUE);place(controls[Info],235,68,w-243,40,TRUE);
  place(controls[Files],8,84,220,h-124,TRUE);
  place(controls[ViewLabel],235,120,36,23,TRUE);place(controls[Level],275,116,100,180,TRUE);
@@ -52,7 +54,7 @@ void configurePresentation(){
  SendMessageW(controls[Detail],EM_SETLIMITTEXT,32*1024*1024,0);SendMessageW(controls[Detail],WM_SETFONT,reinterpret_cast<WPARAM>(simple()?font:mono),TRUE);
  SendMessageW(controls[Search],EM_SETCUEBANNER,0,reinterpret_cast<LPARAM>(simple()?L"Search findings":L"Search fields, values, sources, warnings"));
 }
-Json report(){Json j={{"application","File Analysis"},{"version",FA_VERSION},{"schema_version",3},{"files",Json::array()},{"batch_errors",batchErrors},{"cancelled",analysisCancelled}};for(auto& r:results)j["files"].push_back(r.json());if(!comparison.is_null())j["comparison"]=comparison;return j;}
+Json report(){Json j={{"application","File Analysis"},{"version",FA_VERSION},{"schema_version",4},{"files",Json::array()},{"batch_errors",batchErrors},{"cancelled",analysisCancelled}};for(auto& r:results)j["files"].push_back(r.json());if(!comparison.is_null())j["comparison"]=comparison;return j;}
 std::array<std::string,7> rowText(const Row& row){
  if(row.kind==9){auto& f=findings.at(row.index);return {f.topic,f.title,f.value,"","","",""};}
  if(row.kind==10)return {"Attention","Batch finding",batchErrors.at(row.index),"","","",""};
@@ -92,7 +94,7 @@ void refresh(bool categories=false){
   else if(mode==ComparisonView){if(!comparison.is_null())for(size_t i=0;i<comparison["changes"].size();++i)include({4,i});}
   else if(selectedFile>=0) {auto& r=results[selectedFile];
    if(mode==MetadataView||mode==SummaryView){
-    for(size_t i=0;i<r.fields.size();++i){auto& f=r.fields[i];bool concise=f.category=="Summary"||f.category=="Photo / device"||f.category=="AI provenance"||f.category=="C2PA validation"||f.category=="Image"||f.category=="Hashes"||f.name=="Signature identification"||f.name=="Model parameters result"||f.name=="Size (bytes)";if(mode==MetadataView||concise)include({0,i});}
+    for(size_t i=0;i<r.fields.size();++i){auto& f=r.fields[i];bool concise=f.category=="Summary"||f.category=="Origin summary"||f.category=="Privacy findings"||f.category=="Photo / device"||f.category=="AI provenance"||f.category=="C2PA validation"||f.category=="Image"||f.category=="Hashes"||f.name=="Signature identification"||f.name=="Model parameters result"||f.name=="Size (bytes)";if(mode==MetadataView||concise)include({0,i});}
     if(mode==MetadataView)for(size_t i=0;i<r.generation.size();++i)include({2,i});
     if(mode==SummaryView&&r.provenance.is_object()){
      auto& p=r.provenance;if(p["history_order"].is_array())for(auto& id:p["history_order"])for(size_t i=0;i<p["manifests"].size();++i)if(p["manifests"][i]["id"]==id)include({6,i});
@@ -125,8 +127,14 @@ void openFiles(){std::vector<wchar_t>b(65536);OPENFILENAMEW d{sizeof(d)};d.hwndO
 void openFolder(){IFileOpenDialog* d=nullptr;if(FAILED(CoCreateInstance(CLSID_FileOpenDialog,nullptr,CLSCTX_INPROC_SERVER,IID_PPV_ARGS(&d))))throw std::runtime_error("Folder dialog unavailable");DWORD flags=0;d->GetOptions(&flags);d->SetOptions(flags|FOS_PICKFOLDERS|FOS_FORCEFILESYSTEM);if(SUCCEEDED(d->Show(window))){IShellItem* item=nullptr;if(SUCCEEDED(d->GetResult(&item))){PWSTR p=nullptr;if(SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH,&p))){folder=p;inputPaths.clear();SetWindowTextW(controls[Info],(L"Folder: "+folder.wstring()+L" — press Scan").c_str());CoTaskMemFree(p);}item->Release();}}d->Release();enable();}
 void updateInfo(){if(selectedFile<0)return;auto& r=results[selectedFile];std::wstring info=r.path.wstring()+L"\r\n"+wide(r.format)+L" | "+wide(r.status);if(!simple())info+=L" | "+std::to_wstring(r.size)+L" bytes | "+std::to_wstring(r.errors.size())+L" findings/errors";SetWindowTextW(controls[Info],info.c_str());}
 void selectFile(){int idx=static_cast<int>(SendMessageW(controls[Files],LB_GETCARETINDEX,0,0));if(idx<0||idx>=static_cast<int>(results.size()))return;selectedFile=idx;findings=simpleFindings(results[idx]);hexOffset=0;SetWindowTextW(controls[Offset],L"0x0");updateInfo();refresh(true);}
+INT_PTR CALLBACK shareDialog(HWND h,UINT msg,WPARAM wp,LPARAM lp){
+ if(msg==WM_INITDIALOG){auto options=reinterpret_cast<ShareOptions*>(lp);SetWindowLongPtrW(h,DWLP_USER,lp);CheckDlgButton(h,IDC_OMIT_LOCATION,options->omitLocation?BST_CHECKED:BST_UNCHECKED);CheckDlgButton(h,IDC_OMIT_IDENTIFIERS,options->omitIdentifiers?BST_CHECKED:BST_UNCHECKED);CheckDlgButton(h,IDC_OMIT_PEOPLE,options->omitPeople?BST_CHECKED:BST_UNCHECKED);return TRUE;}
+ if(msg==WM_COMMAND){if(LOWORD(wp)==IDOK){auto options=reinterpret_cast<ShareOptions*>(GetWindowLongPtrW(h,DWLP_USER));options->omitLocation=IsDlgButtonChecked(h,IDC_OMIT_LOCATION)==BST_CHECKED;options->omitIdentifiers=IsDlgButtonChecked(h,IDC_OMIT_IDENTIFIERS)==BST_CHECKED;options->omitPeople=IsDlgButtonChecked(h,IDC_OMIT_PEOPLE)==BST_CHECKED;EndDialog(h,IDOK);return TRUE;}if(LOWORD(wp)==IDCANCEL){EndDialog(h,IDCANCEL);return TRUE;}}
+ return FALSE;
+}
 void command(int id,int notification){
  switch(id){
+ case Share:if(!busy&&!results.empty()){ShareOptions options;auto choice=DialogBoxParamW(instance,MAKEINTRESOURCEW(IDD_SHARE_REPORT),window,shareDialog,reinterpret_cast<LPARAM>(&options));if(choice==-1)throw std::runtime_error("Share report dialog unavailable");if(choice!=IDOK)break;auto dest=save(L"JSON\0*.json\0CSV\0*.csv\0Plain text\0*.txt\0\0",L"json",L"share-summary.json");if(dest){auto ext=dest->extension().wstring();std::transform(ext.begin(),ext.end(),ext.begin(),towlower);std::string format=ext==L".csv"?"csv":ext==L".txt"?"txt":"json";launch([dest=*dest,format,options](Packet& p){std::vector<fs::path> originals;for(const auto& r:results)originals.push_back(r.path);exportReport(dest,shareReport(results,options,FA_VERSION,batchErrors.size(),analysisCancelled),format,originals,&cancelled);p.message=L"Exported share summary. Selected fields and raw data omitted; review retained values before sharing.";});status(L"Exporting share summary...");}}break;
  case Open:if(!busy)openFiles();break;case Folder:if(!busy)openFolder();break;case Scan:if(!busy)scan();break;case Cancel:cancelled=true;status(L"Cancelling; completed and partial results will be retained.");break;
  case Files:if(notification==LBN_SELCHANGE)selectFile();break;
  case Level:if(notification==CBN_SELCHANGE){configurePresentation();SendMessageW(controls[Search],WM_SETTEXT,0,reinterpret_cast<LPARAM>(L""));updateInfo();refresh(true);}break;
@@ -143,7 +151,7 @@ void command(int id,int notification){
 }
 LRESULT CALLBACK wndproc(HWND h,UINT msg,WPARAM wp,LPARAM lp){try{switch(msg){
  case WM_CREATE:{window=h;NONCLIENTMETRICSW metrics{sizeof(metrics)};SystemParametersInfoW(SPI_GETNONCLIENTMETRICS,sizeof(metrics),&metrics,0);font=CreateFontIndirectW(&metrics.lfMessageFont);mono=CreateFontW(-MulDiv(14,static_cast<int>(GetDpiForWindow(window)),96),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,FIXED_PITCH,L"Consolas");
-  for(auto [id,title]:std::vector<std::pair<int,LPCWSTR>>{{Open,L"Open File..."},{Folder,L"Open Folder..."},{Scan,L"Scan"},{Cancel,L"Cancel"},{Export,L"Export Results..."},{Copy,L"Copy"},{Compare,L"Compare two"},{Workflow,L"Export generation..."},{Extract,L"Extract block..."}})make(id,L"BUTTON",title,BS_PUSHBUTTON|WS_TABSTOP);
+  for(auto [id,title]:std::vector<std::pair<int,LPCWSTR>>{{Open,L"Open File..."},{Folder,L"Open Folder..."},{Scan,L"Scan"},{Cancel,L"Cancel"},{Export,L"Export Results..."},{Share,L"Share report..."},{Copy,L"Copy"},{Compare,L"Compare two"},{Workflow,L"Export generation..."},{Extract,L"Extract block..."}})make(id,L"BUTTON",title,BS_PUSHBUTTON|WS_TABSTOP);
   make(Recursive,L"BUTTON",L"Scan subfolders (skip links)",BS_AUTOCHECKBOX|WS_TABSTOP);
   make(Privacy,L"BUTTON",L"Redact local paths in exports",BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(controls[Privacy],BM_SETCHECK,BST_CHECKED,0);
   make(GroupIdat,L"BUTTON",L"Group repeated IDAT chunks",BS_AUTOCHECKBOX|WS_TABSTOP);SendMessageW(controls[GroupIdat],BM_SETCHECK,BST_CHECKED,0);
