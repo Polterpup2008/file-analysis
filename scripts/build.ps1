@@ -1,4 +1,4 @@
-param([string]$BuildDirectory = 'build-v05', [switch]$Package)
+param([string]$BuildDirectory = 'build', [switch]$Package)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 Push-Location -LiteralPath $taskRoot
