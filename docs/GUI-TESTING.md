@@ -24,3 +24,18 @@ Five automated suites pass: engine (99 assertions), provenance (41), presentatio
 On Windows x64 at approximately 1240 x 800, the real 0.5 application was launched with the generated camera PNG. Simple showed origin, privacy and capture findings. Switching to Detailed, searching for Origin summary, and returning to Simple worked without rescanning. The native share dialog showed all three omission choices checked, with readable limits and buttons. A JSON share summary was exported through the actual dialog/Save flow; a separate file-content check confirmed the selected GPS/serial fields and local paths were omitted. The privacy finding label was shortened after observing clipping in its table column.
 
 Local evidence: `tests/output/ui-0.5-simple.jpg` and `tests/output/gui-share-summary-0.5.json` (excluded from the repository). Keyboard navigation was used for the standard Save dialog because targeting its nested controls through accessibility was unreliable. Pointer-only file dialogs, min-size resizing, copy, multi-monitor/high-DPI combinations and every omission-checkbox combination were not all exercised interactively; omission combinations are covered by automated tests.
+
+## 1.0 candidate acceptance
+
+The 0.6 native viewer displayed the generated 160 x 96 gradient JPEG recovered from camera-preview.png. Inspection found a long resource label and a missing viewer title; both were corrected in source. Exact extraction bytes, decoding and pixel limits passed automated checks. Later native automation was blocked by a separate Windows Security prompt for nsys.exe; it was not dismissed or accepted automatically.
+
+Remaining interactive checklist:
+
+1. Launch the final portable candidate with camera-preview.png and camera-conflict.png. Confirm both file rows and readable Simple findings.
+2. Select ThumbnailImage; view the gradient and verify the viewer title/source caption. Close it, Extract preview to a new destination, and compare its SHA-256 with embedded-preview.jpg.
+3. Check Search all files, query the conflicting device model, press Find, select a result, and Open match. Verify the correct file/field is selected without rescanning. Test a zero-result query and category changes.
+4. Click Compare two with exactly two inputs; inspect Changed and Added/Removed categories, left/right details, then switch Simple/Detailed and Back to file.
+5. Exercise actual Open File/Open Folder/Scan, a safe generated batch, cancel on the generated >4 GiB sparse file, Copy/Ctrl+C, and full JSON/CSV/text plus generation exports. Verify full export content independently.
+6. Resize to the supported 1000 x 680 minimum; check toolbar wrapping, preview actions, table/detail scrolling and keyboard focus. Test errors/no metadata and clean closing during an active operation.
+
+These are pending checks, not completed evidence. The final audit must record the actual candidate, environment, outcomes and any remaining gaps.
