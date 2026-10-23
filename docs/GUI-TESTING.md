@@ -10,3 +10,9 @@ The native interface needs an interactive Windows desktop. The GUI driver in `te
 6. Resize the window and check text clipping, wrapping, scrolling, keyboard focus and control visibility.
 
 The 0.3.0 release passed all three local automated suites. Simple was visually checked on a real Gemini PNG. The final automated view-switch check was incomplete; this checklist describes additional verification to perform, not checks claimed as completed.
+
+## 0.4.0 validation
+
+All four automated suites passed on Windows x64: engine (99 assertions), provenance (41), presentation (14) and photo/capture (61, including the local real Canon sample). The photo suite checks generated JPEG, PNG and metadata-only TIFF files, XMP-only/conflicting models, source preservation, missing/unavailable extraction, capture timestamps/settings, zero GPS coordinates, serial numbers, exports and unchanged originals.
+
+The interactive 0.4 GUI check was stopped with the physical Escape key before a window could be inspected. No completed visual or view-switch validation is claimed for this version. Remaining interactive checks: open `camera.png`, `camera-conflict.png`, `clean.png` and a real photo; select camera/lens/GPS findings; switch Simple/Detailed; filter Photo / device; search for the model; copy and export; resize and inspect wrapping/clipping.
