@@ -29,7 +29,7 @@ struct Result {
  std::vector<Field> fields;
  std::vector<Block> blocks;
  std::vector<std::string> errors;
- Json parser, parserNumeric, generation=Json::array(), provenance, c2paReport;
+ Json parser, parserNumeric, generation=Json::array(), provenance, c2paReport, photo;
  Json json() const;
 };
 struct Options { fs::path exiftool, c2patool; DWORD parserTimeoutMs=20000; bool useParser=true, useC2pa=true; };
@@ -48,6 +48,7 @@ Json structureGroups(const Result&, bool groupIdat=true);
 Json redactLocalPaths(const Json&, const std::vector<fs::path>&);
 Result analyze(const fs::path&, const Options&, std::atomic_bool&, const std::function<void(unsigned)>& progress={});
 void parseGeneration(Result&);
+void summarizePhoto(Result&);
 Json compare(const Result&, const Result&, std::atomic_bool* cancel=nullptr);
 std::vector<fs::path> enumerate(const fs::path&, bool recursive, std::atomic_bool&, std::vector<std::string>& errors);
 void exportReport(const fs::path&, const Json&, const std::string& format, const std::vector<fs::path>& originals={}, std::atomic_bool* cancel=nullptr);
