@@ -41,6 +41,7 @@ struct ProcessResult { std::string out, err; DWORD exitCode=0; };
 std::string utf8(std::wstring_view s);
 std::wstring wide(std::string_view s);
 std::string display(const Json& j);
+bool metadataReadSucceeded(const Result&);
 std::string sha256File(const fs::path&, std::atomic_bool&);
 std::string sha256Bytes(std::span<const unsigned char>);
 size_t previewBytes(const Result&);

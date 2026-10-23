@@ -91,7 +91,7 @@ void summarizePhoto(Result& r) {
   if(std::string_view(p.key)=="make")make=true;if(std::string_view(p.key)=="model")model=true;
  }
  if(!image(r)&&found.empty()){r.photo=nullptr;return;}
- bool extracted=r.parser.is_object();
+ bool extracted=metadataReadSucceeded(r);
  r.photo={{"device_status",model?"model_reported":make?"manufacturer_only":extracted?"not_reported":"not_evaluated"},{"metadata_reader_available",extracted},{"properties",found},{"warnings",warnings},{"limitation",limitation}};
  for(const auto& item:found) {
   std::string value;for(const auto& v:item["values"]){if(!value.empty())value+=" / ";value+=v.get<std::string>();}

@@ -149,6 +149,9 @@ Json Result::json() const {
  for(auto& b:blocks)j["blocks"].push_back({{"type",b.type},{"offset",b.offset},{"size",b.size},{"sha256",b.sha256},{"note",b.note}});
  j["embedded_previews"]={{"status",previewStatus},{"items",Json::array()}};for(const auto& p:previews)j["embedded_previews"]["items"].push_back({{"source_field",p.field},{"format",p.format},{"size",p.bytes.size()},{"sha256",p.sha256},{"width",p.width},{"height",p.height},{"viewable",p.viewable},{"warning",p.warning},{"offset",nullptr},{"snapshot","Recovered bytes retained at scan time; export separately for exact payload"}});return j;
 }
+bool metadataReadSucceeded(const Result& r){
+ if(!r.parser.is_object())return false;for(auto it=r.parser.begin();it!=r.parser.end();++it)if(it.key().starts_with("ExifTool:")&&it.key().ends_with(":Error")&&!it.value().is_null()&&it.value()!=Json(""))return false;return true;
+}
 Result analyze(const fs::path& path,const Options& options,std::atomic_bool& cancel,const std::function<void(unsigned)>& progress) {
  Result r;r.path=fs::absolute(path).lexically_normal();
  try {
