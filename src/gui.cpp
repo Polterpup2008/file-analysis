@@ -52,7 +52,7 @@ void configurePresentation(){
  SendMessageW(controls[Detail],EM_SETLIMITTEXT,32*1024*1024,0);SendMessageW(controls[Detail],WM_SETFONT,reinterpret_cast<WPARAM>(simple()?font:mono),TRUE);
  SendMessageW(controls[Search],EM_SETCUEBANNER,0,reinterpret_cast<LPARAM>(simple()?L"Search findings":L"Search fields, values, sources, warnings"));
 }
-Json report(){Json j={{"application","File Analysis"},{"version","0.3.0"},{"schema_version",2},{"files",Json::array()},{"batch_errors",batchErrors},{"cancelled",analysisCancelled}};for(auto& r:results)j["files"].push_back(r.json());if(!comparison.is_null())j["comparison"]=comparison;return j;}
+Json report(){Json j={{"application","File Analysis"},{"version",FA_VERSION},{"schema_version",3},{"files",Json::array()},{"batch_errors",batchErrors},{"cancelled",analysisCancelled}};for(auto& r:results)j["files"].push_back(r.json());if(!comparison.is_null())j["comparison"]=comparison;return j;}
 std::array<std::string,7> rowText(const Row& row){
  if(row.kind==9){auto& f=findings.at(row.index);return {f.topic,f.title,f.value,"","","",""};}
  if(row.kind==10)return {"Attention","Batch finding",batchErrors.at(row.index),"","","",""};
@@ -92,7 +92,7 @@ void refresh(bool categories=false){
   else if(mode==ComparisonView){if(!comparison.is_null())for(size_t i=0;i<comparison["changes"].size();++i)include({4,i});}
   else if(selectedFile>=0) {auto& r=results[selectedFile];
    if(mode==MetadataView||mode==SummaryView){
-    for(size_t i=0;i<r.fields.size();++i){auto& f=r.fields[i];bool concise=f.category=="Summary"||f.category=="AI provenance"||f.category=="C2PA validation"||f.category=="Image"||f.category=="Hashes"||f.name=="Signature identification"||f.name=="Model parameters result"||f.name=="Size (bytes)";if(mode==MetadataView||concise)include({0,i});}
+    for(size_t i=0;i<r.fields.size();++i){auto& f=r.fields[i];bool concise=f.category=="Summary"||f.category=="Photo / device"||f.category=="AI provenance"||f.category=="C2PA validation"||f.category=="Image"||f.category=="Hashes"||f.name=="Signature identification"||f.name=="Model parameters result"||f.name=="Size (bytes)";if(mode==MetadataView||concise)include({0,i});}
     if(mode==MetadataView)for(size_t i=0;i<r.generation.size();++i)include({2,i});
     if(mode==SummaryView&&r.provenance.is_object()){
      auto& p=r.provenance;if(p["history_order"].is_array())for(auto& id:p["history_order"])for(size_t i=0;i<p["manifests"].size();++i)if(p["manifests"][i]["id"]==id)include({6,i});
@@ -166,5 +166,5 @@ LRESULT CALLBACK wndproc(HWND h,UINT msg,WPARAM wp,LPARAM lp){try{switch(msg){
  case WM_DESTROY:if(font)DeleteObject(font);if(mono)DeleteObject(mono);PostQuitMessage(0);return 0;
  }}catch(const std::exception& e){error(e);}return DefWindowProcW(h,msg,wp,lp);}
 }
-int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){instance=h;SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32|LOAD_LIBRARY_SEARCH_APPLICATION_DIR);CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);INITCOMMONCONTROLSEX init{sizeof(init),ICC_LISTVIEW_CLASSES|ICC_PROGRESS_CLASS};InitCommonControlsEx(&init);WNDCLASSEXW cls{sizeof(cls)};cls.lpfnWndProc=wndproc;cls.hInstance=h;cls.hCursor=LoadCursorW(nullptr,IDC_ARROW);cls.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_BTNFACE+1);cls.lpszClassName=L"FileAnalysisWindow";RegisterClassExW(&cls);auto hwnd=CreateWindowExW(0,cls.lpszClassName,L"File Analysis",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,MulDiv(1240,static_cast<int>(GetDpiForSystem()),96),MulDiv(800,static_cast<int>(GetDpiForSystem()),96),nullptr,nullptr,h,nullptr);if(!hwnd)return 1;ShowWindow(hwnd,show);UpdateWindow(hwnd);
+int WINAPI wWinMain(HINSTANCE h,HINSTANCE,LPWSTR,int show){instance=h;SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32|LOAD_LIBRARY_SEARCH_APPLICATION_DIR);CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);INITCOMMONCONTROLSEX init{sizeof(init),ICC_LISTVIEW_CLASSES|ICC_PROGRESS_CLASS};InitCommonControlsEx(&init);WNDCLASSEXW cls{sizeof(cls)};cls.lpfnWndProc=wndproc;cls.hInstance=h;cls.hCursor=LoadCursorW(nullptr,IDC_ARROW);cls.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_BTNFACE+1);cls.lpszClassName=L"FileAnalysisWindow";RegisterClassExW(&cls);auto hwnd=CreateWindowExW(0,cls.lpszClassName,wide(std::string("File Analysis ")+FA_VERSION).c_str(),WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,MulDiv(1240,static_cast<int>(GetDpiForSystem()),96),MulDiv(800,static_cast<int>(GetDpiForSystem()),96),nullptr,nullptr,h,nullptr);if(!hwnd)return 1;ShowWindow(hwnd,show);UpdateWindow(hwnd);
  int argc=0;auto argv=CommandLineToArgvW(GetCommandLineW(),&argc);for(int i=1;i<argc;++i)inputPaths.emplace_back(argv[i]);LocalFree(argv);if(!inputPaths.empty())scan();MSG msg{};while(GetMessageW(&msg,nullptr,0,0)>0){if(!IsDialogMessageW(hwnd,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}if(worker.joinable())worker.join();CoUninitialize();return 0;}

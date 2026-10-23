@@ -140,7 +140,7 @@ bool extensionMatches(const Result& r) {
 }
 std::string sha256File(const fs::path& path,std::atomic_bool& cancel){Reader file(path,cancel);return file.hash(0,file.size);}
 Json Result::json() const {
- Json j={{"path",utf8(path.wstring())},{"format_signature",format},{"status",status},{"size",size},{"fields",Json::array()},{"blocks",Json::array()},{"structure_summary",structureGroups(*this)},{"errors",errors},{"generation",generation},{"provenance",provenance},{"c2patool_report",c2paReport},{"exiftool_interpreted",parser},{"exiftool_numeric",parserNumeric}};
+ Json j={{"path",utf8(path.wstring())},{"format_signature",format},{"status",status},{"size",size},{"fields",Json::array()},{"blocks",Json::array()},{"structure_summary",structureGroups(*this)},{"errors",errors},{"generation",generation},{"photo",photo},{"provenance",provenance},{"c2patool_report",c2paReport},{"exiftool_interpreted",parser},{"exiftool_numeric",parserNumeric}};
  for(auto& f:fields)j["fields"].push_back({{"category",f.category},{"name",f.name},{"value",f.value},{"raw",f.raw},{"source",f.source},{"offset",f.offset?Json(*f.offset):Json(nullptr)},{"size",f.size?Json(*f.size):Json(nullptr)},{"warning",f.warning}});
  for(auto& b:blocks)j["blocks"].push_back({{"type",b.type},{"offset",b.offset},{"size",b.size},{"sha256",b.sha256},{"note",b.note}});return j;
 }
@@ -175,6 +175,7 @@ Result analyze(const fs::path& path,const Options& options,std::atomic_bool& can
   if(progress)progress(95);
   analyzeProvenance(r,options,cancel);
   parseGeneration(r);
+  summarizePhoto(r);
   std::map<std::string,std::vector<std::string>> texts;for(auto& t:r.fields)if(t.category=="PNG text")texts[t.name].push_back(display(t.value));for(auto& [key,values]:texts)if(values.size()>1){std::set<std::string> distinct(values.begin(),values.end());r.errors.push_back("Duplicate PNG text keyword "+key+" ("+std::to_string(values.size())+" entries)"+(distinct.size()>1?"; values conflict":""));}
   field(r,"Limitations","Attribution limits","Embedded authors, software names and public identifiers are claims; they do not establish identity. C2PA validation does not establish the truth of recorded actions. PDF signature validation and Authenticode verification are not implemented. Filesystem timestamps are not generation timestamps; copying or downloading can make local creation later than modification.");
   field(r,"Limitations","Extraction scope","All tags returned by the configured ExifTool invocation are retained. Binary tag payloads, recursive embedded documents/media and unavailable proprietary tags are not exhaustively extracted. Numeric output is not original source bytes; offsets are null unless known.");
