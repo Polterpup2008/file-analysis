@@ -32,7 +32,7 @@ Native deep structure inspection covers **PNG and JPEG**. Other recognized forma
 
 This app reads recorded evidence. It is **not a visual AI detector**: missing metadata does not prove a file is human-made. A recorded SynthID action is not an independent watermark test. A valid signature and a trusted certificate do not prove the factual truth of every action or the identity of a human creator.
 
-The **1.0 candidate** adds preview recovery, batch search, readable comparison and additional generation conventions. Final desktop/release checks are tracked in [the acceptance audit](docs/AUDIT-1.0.md). The latest verified public release is still 0.5 until that audit is complete.
+**1.0** adds preview recovery, batch search, readable comparison and additional generation conventions. Test evidence and practical limits are recorded in [the acceptance audit](docs/AUDIT-1.0.md) and [desktop checks](docs/GUI-TESTING.md).
 
 ## Use
 
