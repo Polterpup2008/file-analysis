@@ -68,6 +68,19 @@ std::vector<SimpleFinding> simpleFindings(const Result& r) {
  std::set<std::string> warnings;
  for(const auto& e:r.errors)if(warnings.insert(e).second)add("Attention","Analysis finding",e,e+"\r\n\r\nDetailed view contains the associated parser and structural evidence.");
  if(r.status=="cancelled"||r.status=="error")add("Attention","Incomplete analysis",r.status=="cancelled"?"Analysis was cancelled":"Analysis did not finish","Only recovered results are shown. Missing metadata cannot be interpreted as absent after an incomplete analysis.");
+ if(r.origin.is_object()){
+  auto assessment=str(r.origin,"assessment");std::string detail=str(r.origin,"limitation");
+  for(const auto& s:member(r.origin,"software_claims",emptyArray))detail+="\r\n\r\nRecorded software: "+str(s,"name")+"\r\nSource: "+str(s,"field");
+  add("Origin","Recorded origin signals",assessment,detail);
+ }
+ if(r.privacy.is_object()){
+  const auto& counts=member(r.privacy,"counts");std::string summary,detail;
+  const std::map<std::string,std::string> labels{{"location","Location"},{"identifiers","Identifiers"},{"people","Names/contact/rights"},{"previews","Preview tags"},{"free_text","Free text"}};
+  for(auto it=counts.begin();it!=counts.end();++it)if(it.value()!=0){auto label=labels.find(it.key());if(!summary.empty())summary+="; ";summary+=(label==labels.end()?it.key():label->second)+": "+display(it.value());}
+  for(const auto& f:member(r.privacy,"findings",emptyArray)){auto value=display(member(f,"value"));if(value.size()>512)value=value.substr(0,512)+" [preview truncated; full value in Detailed]";detail+=str(f,"title")+": "+str(f,"field")+"\r\n"+value+"\r\n\r\n";}
+  detail+=str(r.privacy,"limitation")+"\r\n\r\nShare report lets you omit location, identifiers and people/contact fields. It also excludes raw data, prompts and workflows. Full Export Results retains the complete evidence.";
+  if(!summary.empty())add("Privacy","Review before sharing",summary,detail);
+ }
  photoFindings(r,out);
  const auto& p=r.provenance;
  const auto& ai=member(p,"ai_claims",emptyArray);
@@ -130,7 +143,7 @@ std::vector<SimpleFinding> simpleFindings(const Result& r) {
  for(const auto& f:r.fields){
   // Scanner values, ordinary file properties and raw C2PA structures belong in Detailed.
   if(f.category=="Analysis diagnostics"||f.category=="Derived values"||f.category=="File"||f.category=="Filesystem"||f.category=="Hashes"||f.category=="Provenance"||f.category=="AI provenance"||f.category=="C2PA validation"||f.category=="Summary"||f.category=="Limitations"||f.category=="Generation parameters"||f.category=="Photo / device")continue;
-  if(photoSources.contains(f.name))continue;
+  if(photoSources.contains(f.name)||f.category=="Origin summary"||f.category=="Privacy findings")continue;
   auto name=tail(f.name);auto it=notable.find(name);if(it==notable.end()||f.value.is_null())continue;
   auto value=display(f.value);if(value.empty())continue;
   if(name=="usercomment"&&generationPresent)continue;

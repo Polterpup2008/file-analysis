@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "insights.hpp"
 #include "format_registry.hpp"
 #include <bcrypt.h>
 #include <algorithm>
@@ -140,7 +141,7 @@ bool extensionMatches(const Result& r) {
 }
 std::string sha256File(const fs::path& path,std::atomic_bool& cancel){Reader file(path,cancel);return file.hash(0,file.size);}
 Json Result::json() const {
- Json j={{"path",utf8(path.wstring())},{"format_signature",format},{"status",status},{"size",size},{"fields",Json::array()},{"blocks",Json::array()},{"structure_summary",structureGroups(*this)},{"errors",errors},{"generation",generation},{"photo",photo},{"provenance",provenance},{"c2patool_report",c2paReport},{"exiftool_interpreted",parser},{"exiftool_numeric",parserNumeric}};
+ Json j={{"path",utf8(path.wstring())},{"format_signature",format},{"status",status},{"size",size},{"fields",Json::array()},{"blocks",Json::array()},{"structure_summary",structureGroups(*this)},{"errors",errors},{"generation",generation},{"photo",photo},{"origin_summary",origin},{"privacy",privacy},{"provenance",provenance},{"c2patool_report",c2paReport},{"exiftool_interpreted",parser},{"exiftool_numeric",parserNumeric}};
  for(auto& f:fields)j["fields"].push_back({{"category",f.category},{"name",f.name},{"value",f.value},{"raw",f.raw},{"source",f.source},{"offset",f.offset?Json(*f.offset):Json(nullptr)},{"size",f.size?Json(*f.size):Json(nullptr)},{"warning",f.warning}});
  for(auto& b:blocks)j["blocks"].push_back({{"type",b.type},{"offset",b.offset},{"size",b.size},{"sha256",b.sha256},{"note",b.note}});return j;
 }
@@ -176,6 +177,7 @@ Result analyze(const fs::path& path,const Options& options,std::atomic_bool& can
   analyzeProvenance(r,options,cancel);
   parseGeneration(r);
   summarizePhoto(r);
+  summarizeInsights(r);
   std::map<std::string,std::vector<std::string>> texts;for(auto& t:r.fields)if(t.category=="PNG text")texts[t.name].push_back(display(t.value));for(auto& [key,values]:texts)if(values.size()>1){std::set<std::string> distinct(values.begin(),values.end());r.errors.push_back("Duplicate PNG text keyword "+key+" ("+std::to_string(values.size())+" entries)"+(distinct.size()>1?"; values conflict":""));}
   field(r,"Limitations","Attribution limits","Embedded authors, software names and public identifiers are claims; they do not establish identity. C2PA validation does not establish the truth of recorded actions. PDF signature validation and Authenticode verification are not implemented. Filesystem timestamps are not generation timestamps; copying or downloading can make local creation later than modification.");
   field(r,"Limitations","Extraction scope","All tags returned by the configured ExifTool invocation are retained. Binary tag payloads, recursive embedded documents/media and unavailable proprietary tags are not exhaustively extracted. Numeric output is not original source bytes; offsets are null unless known.");
@@ -252,6 +254,11 @@ void exportReport(const fs::path& dest,const Json& report,const std::string& for
   auto row=[&](const std::vector<std::string>& cells){std::string line;for(auto& c:cells){if(!line.empty())line+=',';line+=csv(c);}emit(line+"\r\n");};
   for(auto& r:report.at("files")){auto p=display(r["path"]);row({p,"Analysis","Status",display(r["status"]),"Native","","","",""});for(auto& f:r["fields"])row({p,display(f["category"]),display(f["name"]),display(f["value"]),display(f["source"]),display(f["raw"]),display(f["offset"]),display(f["size"]),display(f["warning"])});for(auto& e:r["errors"])row({p,"Error","Analysis error",display(e),"Analysis","","","",display(e)});for(auto& b:r["blocks"])row({p,"Structure",display(b["type"]),display(b),"Native","",display(b["offset"]),display(b["size"]),display(b["note"])});for(auto& g:r["generation"])row({p,"Generation",display(g["name"]),display(g["value"]),display(g["source_field"]),"","","","Unverified embedded metadata"});}
   for(auto& r:report.at("files")){auto p=display(r["path"]);if(r.contains("provenance"))row({p,"Provenance","C2PA history and validation",display(r["provenance"]),"Analysis","","","","Claims and independent validation are separate"});if(r.contains("c2patool_report"))row({p,"C2PA validation","Full validator report",display(r["c2patool_report"]),"c2patool","","","",""});}
+  if(report.contains("report_mode")){
+   row({"","Report","Mode",display(report["report_mode"]),"Export","","","",report.value("limitation",std::string())});
+   row({"","Analysis","Batch error count",display(report.value("batch_error_count",Json(0))),"Analysis","","","","Raw error text is omitted from share summaries; counts remain explicit."});
+   row({"","Analysis","Cancelled",display(report.value("cancelled",Json(false))),"Analysis","","","","Cancellation remains explicit even when all recovered files have completed statuses."});
+  }
   for(auto& e:report.value("batch_errors",Json::array()))row({"","Batch error","Error",display(e),"Scan","","","",display(e)});
   if(report.contains("comparison"))row({"","Comparison","Observed changes",display(report["comparison"]),"Analysis","","","",""});
   row({"","Export","CSV safety","Formula-leading cells are prefixed with an apostrophe. JSON preserves exact values.","Export","","","",""});

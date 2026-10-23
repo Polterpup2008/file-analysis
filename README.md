@@ -6,7 +6,7 @@ Written in C++20 with native Win32 controls. Analysis runs locally and offline b
 
 ## Download and run
 
-Download **FileAnalysis-0.4.0-Windows-x64.zip** from the [latest release](https://github.com/Polterpup2008/file-analysis/releases/latest). Requires Windows 10 or 11, 64-bit.
+Download **FileAnalysis-0.5.0-Windows-x64.zip** from the [latest release](https://github.com/Polterpup2008/file-analysis/releases/latest). Requires Windows 10 or 11, 64-bit.
 
 1. Extract the entire ZIP to a folder.
 2. Run `file-analysis.exe` inside it. Keep the adjacent `exiftool` and `c2patool` folders intact.
@@ -18,6 +18,8 @@ The portable download includes its parser tools and required runtime files. You 
 
 - **Simple and Detailed views:** start with useful findings, then inspect every recovered field, raw value, source and available byte location.
 - **Camera and capture details:** surface recorded device manufacturer/model, lens, capture time and timezone, exposure, aperture, ISO, focal length, flash, shooting modes, device/lens serial numbers and GPS metadata. Flag different recorded device identities and retain every source.
+- **Origin and privacy summaries:** bring camera, AI provenance, generation settings and software claims together; highlight location, identifiers, names/contact/rights claims, preview tags and free text to review.
+- **Share reports:** choose which sensitive field groups to omit from a compact JSON/CSV/text summary. Raw payloads and unstructured text are excluded; the full local analysis stays intact.
 - **AI metadata:** recover ComfyUI workflows/API prompt JSON and AUTOMATIC1111-compatible prompts and settings when present. Surface explicit AI claims in C2PA provenance separately from generation parameters.
 - **Content Credentials:** reconstruct linked provenance records, show recorded creation/editing/watermark actions, and independently check active-manifest integrity and certificate trust using the bundled official c2patool.
 - **File forensics:** identify formats by signatures, calculate SHA-256/SHA-1 hashes, inspect PNG chunks and JPEG segments, check PNG CRCs, flag unknown blocks and reliably identifiable trailing data, and view or extract raw blocks.
@@ -28,7 +30,7 @@ Native deep structure inspection covers **PNG and JPEG**. Other recognized forma
 
 This app reads recorded evidence. It is **not a visual AI detector**: missing metadata does not prove a file is human-made. A recorded SynthID action is not an independent watermark test. A valid signature and a trusted certificate do not prove the factual truth of every action or the identity of a human creator.
 
-Version **0.4.0** is an early release. Its supported checks and limitations are described below.
+Version **0.5.0** is an early release. Its supported checks and limitations are described below.
 
 ## Use
 
@@ -43,7 +45,19 @@ Version **0.4.0** is an early release. Its supported checks and limitations are 
 - Path redaction covers textual local Windows paths, source filenames, parser output, errors and comparison data. It is **not anonymization**: embedded authors, identifiers, public URLs and binary/hex/base64 payloads can contain personal data. Review a report before sharing.
 - Exports and extraction require a **new destination file**. Existing files and evidence aliases/hard links are protected. Cancellation during writing can leave an incomplete destination; the operation reports this explicitly.
 
-## Camera and capture metadata (new in 0.4)
+## Origin, privacy and sharing (new in 0.5)
+
+**Recorded origin signals** summarizes the metadata recovered from the file. Camera tags, AI involvement recorded in C2PA and embedded generation parameters remain distinct signals and may coexist. An editor name is a software claim, not proof of an editing action. Missing metadata gives **Origin not established**. No visual detector, device guess or complete-history reconstruction is added.
+
+**Review before sharing** highlights location/GPS, device/document identifiers, names/contact/rights claims, embedded preview tags and free text. Select it to inspect source fields. Detailed > Metadata contains the **Origin summary** and **Privacy findings** categories. The privacy review recognizes selected metadata fields; it does not exhaustively inspect arbitrary binary data or detect every personal detail.
+
+**Share report...** opens a native dialog with independent controls to omit location/GPS, device/document identifiers and names/contact/rights fields. All three are selected by default. Save the result as JSON, CSV or text to a new file. This creates a compact report: it always excludes source paths/filenames, raw parser objects, binary blocks, full provenance manifests, prompts, workflows, free text and raw error messages. Files are labeled File 1, File 2, etc. Analysis/batch error counts and cancellation status remain explicit. SHA-256, retained capture settings and software claims remain available.
+
+This is **not guaranteed anonymization**. Retained dates, camera/lens/software values and file fingerprints can identify a file or contain personal information. Review the result before sharing. Share report changes the exported summary only; originals and the complete in-memory analysis remain intact. **Export Results...** still produces the full forensic report, with its existing optional local-path redaction.
+
+JSON schema 4 adds `files[].origin_summary` and `files[].privacy` to full reports. Share reports are explicitly labeled `report_mode: share_summary`, carry the omission policy and limitations, and contain a deliberately smaller set of evidence. They are not interchangeable with full forensic reports.
+
+## Camera and capture metadata (added in 0.4)
 
 Simple view now shows a **Camera / device reported** finding for images. If the file contains a device model, it displays the exact stored name or model code. If only a manufacturer is present, it says the model was not recovered. If no make/model was recovered, it says so; a disabled or unsuccessful metadata reader is labeled **Not evaluated** instead.
 
@@ -90,14 +104,14 @@ From a source checkout, run `scripts/bootstrap-dependencies.ps1` once with netwo
 ```powershell
 .\scripts\bootstrap-dependencies.ps1
 python tests/make_fixtures.py
-cmake -S . -B build-v04 -G "Visual Studio 17 2022" -A x64
-cmake --build build-v04 --config Release -j 4
-ctest --test-dir build-v04 -C Release --output-on-failure
-cmake --install build-v04 --config Release --prefix dist/FileAnalysis-0.4.0
+cmake -S . -B build-v05 -G "Visual Studio 17 2022" -A x64
+cmake --build build-v05 --config Release -j 4
+ctest --test-dir build-v05 -C Release --output-on-failure
+cmake --install build-v05 --config Release --prefix dist/FileAnalysis-0.5.0
 ```
 
 Alternatively run `scripts/build.ps1`; it can locate CMake bundled with Visual Studio when CMake is not on PATH. `-Package` additionally installs the portable distribution.
 
-The engine suite covers valid/empty/malformed data, unknown formats, duplicates, Unicode, >4 GiB size handling, interrupted scans, inaccessible files, parser timeouts, hostile environment hooks, exports, hard-link protection and unchanged original bytes. The provenance suite uses a real signed asset and a modified copy to distinguish signature validity, content binding and trust; it also covers fallback extraction, historical validation claims, cycles, grouped chunks, malformed C2PA, diagnostic comparison and privacy redaction. The presentation suite checks information selection, honest empty/incomplete states, visible corruption, generation settings, source-link history and separation of claims, integrity and trust. The photo suite uses synthetic JPEG/PNG/TIFF EXIF and XMP-only/conflicting metadata, checks settings/timezone/GPS/serials, rejects unrelated model fields, distinguishes absent from unavailable metadata, checks all export formats and verifies unchanged original bytes. It also exercises a real Canon sample when present. The GUI driver in `tests/gui_smoke.mjs` uses actual controls through the Computer Use API; it is separate from CTest and requires an interactive desktop.
+The engine suite covers valid/empty/malformed data, unknown formats, duplicates, Unicode, >4 GiB size handling, interrupted scans, inaccessible files, parser timeouts, hostile environment hooks, exports, hard-link protection and unchanged original bytes. The provenance suite uses a real signed asset and a modified copy to distinguish signature validity, content binding and trust; it also covers fallback extraction, historical validation claims, cycles, grouped chunks, malformed C2PA, diagnostic comparison and privacy redaction. The presentation suite checks information selection, honest empty/incomplete states, visible corruption, generation settings, source-link history and separation of claims, integrity and trust. The photo suite uses synthetic JPEG/PNG/TIFF EXIF and XMP-only/conflicting metadata, checks settings/timezone/GPS/serials, rejects unrelated model fields, distinguishes absent from unavailable metadata, checks all export formats and verifies unchanged original bytes. It also exercises a real Canon sample when present. The origin/privacy suite checks combined signals, source-linked privacy findings, independent omission groups, removal of duplicated raw payloads, original-evidence preservation, all share export formats and explicit batch/error/cancellation state. The GUI driver in `tests/gui_smoke.mjs` uses actual controls through the Computer Use API; it is separate from CTest and requires an interactive desktop.
 
 For a private local PNG regression, pass its path as the optional fourth argument to `provenance-tests.exe` after the fixture directory, ExifTool path and c2patool path. That regression checks the specific two-manifest/344-chunk Gemini case and writes path-redacted reports under `tests/output`. The private image and its old export are not bundled as fixtures.
