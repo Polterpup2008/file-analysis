@@ -1,4 +1,5 @@
 #include "insights.hpp"
+#include "device_recognition.hpp"
 #include <algorithm>
 #include <cctype>
 #include <set>
@@ -26,7 +27,7 @@ Json exportedField(std::string category,std::string name,Json value,std::string 
 }
 void summarizeInsights(Result& r){
  std::erase_if(r.fields,[](const Field& f){return f.category=="Origin summary"||f.category=="Privacy findings";});
- bool camera=oneOf(str(r.photo,"device_status"),{"model_reported","manufacturer_only"});
+ bool camera=oneOf(str(r.photo,"device_status"),{"model_reported","model_identifier_reported","manufacturer_only"});
  const auto& ai=member(r.provenance,"ai_claims",emptyArray);bool aiClaim=ai.is_array()&&!ai.empty(),parameters=!r.generation.empty();
  Json signals=Json::array();if(camera)signals.push_back("capture_device_tags");if(aiClaim)signals.push_back("ai_provenance_claim");if(parameters)signals.push_back("generation_parameters");
  std::string assessment=camera&&(aiClaim||parameters)?"Camera and generation metadata present":aiClaim?"AI involvement recorded in provenance":parameters?"Generation settings recovered":camera?"Capture device recorded in metadata":"Origin not established";
@@ -44,14 +45,15 @@ void summarizeInsights(Result& r){
 Json shareReport(const std::vector<Result>& results,const ShareOptions& options,std::string_view version,size_t batchErrorCount,bool cancelled){
  const std::string limitation="This is a selected-field summary, not a full forensic report or guaranteed anonymization. Source paths/names, raw parser data, binary blocks, full provenance, prompts, workflows, free text and raw error messages are omitted. Remaining camera, lens, date, software or other retained values may still contain personal information; review before sharing. Originals are never modified.";
  Json policy={{"omit_location",options.omitLocation},{"omit_identifiers",options.omitIdentifiers},{"omit_people",options.omitPeople}};
- Json report={{"application","File Analysis"},{"version",std::string(version)},{"schema_version",5},{"report_mode","share_summary"},{"redaction_policy",policy},{"limitation",limitation},{"files",Json::array()},{"batch_errors",Json::array()},{"batch_error_count",batchErrorCount},{"cancelled",cancelled}};
+ Json report={{"application","File Analysis"},{"version",std::string(version)},{"schema_version",6},{"report_mode","share_summary"},{"redaction_policy",policy},{"limitation",limitation},{"files",Json::array()},{"batch_errors",Json::array()},{"batch_error_count",batchErrorCount},{"cancelled",cancelled}};
  for(size_t i=0;i<results.size();++i){const auto& r=results[i];Json fields=Json::array();auto add=[&](std::string category,std::string name,Json value,std::string warning={}){fields.push_back(exportedField(std::move(category),std::move(name),std::move(value),std::move(warning)));};
   add("Origin summary","Recorded origin signals",str(r.origin,"assessment"),str(r.origin,"limitation"));
   add("Sharing","Redaction policy",policy,limitation);add("Analysis","Error count (details omitted)",r.errors.size(),"Error text is excluded because it can contain paths or personal metadata. Use the full local report to inspect errors.");
   for(const auto& f:r.fields)if(f.category=="Hashes"&&f.name=="SHA-256")add("Hashes","SHA-256",f.value,"A file fingerprint can link this report to the original file; it is not anonymization.");
-  Json capture=Json::array();for(const auto& p:member(r.photo,"properties",emptyArray)){auto key=str(p,"key");bool location=oneOf(key,{"latitude","latitude_ref","longitude","longitude_ref","altitude","altitude_ref"}),id=oneOf(key,{"body_serial","lens_serial"});bool ordinary=oneOf(key,{"make","model","lens_make","lens_model","capture_time","capture_offset","capture_subseconds","exposure","aperture","iso","focal_length","focal_length_35mm","flash","exposure_program","exposure_mode","white_balance"});if(!ordinary&&!(location&&!options.omitLocation)&&!(id&&!options.omitIdentifiers))continue;
+  Json capture=Json::array();for(const auto& p:member(r.photo,"properties",emptyArray)){auto key=str(p,"key");bool location=oneOf(key,{"latitude","latitude_ref","longitude","longitude_ref","altitude","altitude_ref"}),id=oneOf(key,{"body_serial","lens_serial"});bool ordinary=oneOf(key,{"make","model","model_id","lens_make","lens_model","capture_time","capture_offset","capture_subseconds","exposure","aperture","iso","focal_length","focal_length_35mm","flash","exposure_program","exposure_mode","white_balance"});if(!ordinary&&!(location&&!options.omitLocation)&&!(id&&!options.omitIdentifiers))continue;
    Json item={{"key",key},{"title",member(p,"title")},{"values",member(p,"values",emptyArray)},{"conflict",member(p,"conflict")},{"warning",member(p,"warning")},{"note",member(p,"note")}};capture.push_back(item);add("Photo / device",str(p,"title"),member(p,"values",emptyArray),str(p,"note"));
   }
+  auto recognizedNames=deviceNamesForSharing(member(r.photo,"recognition"));if(!recognizedNames.empty())add("Photo / device","Recognised device names",recognizedNames,"Offline names are metadata matches, not proof of the physical capture device.");
   // Explicitly allowed metadata only. Whole parser objects and raw fields are never copied.
   Json included=Json::array();for(const auto& f:member(r.privacy,"findings",emptyArray)){auto kind=str(f,"kind");if(!oneOf(kind,{"location","identifiers","people"})||omitted(kind,options))continue;included.push_back(f);add("Included metadata",str(f,"field"),member(f,"value"),"Included by the selected export policy; review before sharing.");}
   for(const auto& s:member(r.origin,"software_claims",emptyArray))add("Software claim","Recorded software",member(s,"name"),"An editable software name is not proof of an editing action or identity.");
@@ -59,7 +61,7 @@ Json shareReport(const std::vector<Result>& results,const ShareOptions& options,
   // Do not reproduce unperformed success labels from an imported/partial object.
   if(provenance["verification_performed"]!=true){provenance["signature_integrity"]="not_verified";provenance["content_binding"]="not_verified";provenance["certificate_trust"]="not_evaluated";}
   add("Privacy findings","Detected metadata categories",member(r.privacy,"counts"),str(r.privacy,"limitation"));add("Generation","Generation settings present",!r.generation.empty(),"Prompt/workflow contents are intentionally omitted from share summaries.");
-  report["files"].push_back({{"path","File "+std::to_string(i+1)},{"format_signature",r.format},{"status",r.status},{"size",r.size},{"fields",fields},{"blocks",Json::array()},{"errors",Json::array()},{"error_count",r.errors.size()},{"generation",Json::array()},{"photo",capture},{"provenance",provenance},{"included_personal_metadata",included}});
+  report["files"].push_back({{"path","File "+std::to_string(i+1)},{"format_signature",r.format},{"status",r.status},{"size",r.size},{"fields",fields},{"blocks",Json::array()},{"errors",Json::array()},{"error_count",r.errors.size()},{"generation",Json::array()},{"photo",capture},{"recognized_device_names",recognizedNames},{"provenance",provenance},{"included_personal_metadata",included}});
  }
  return report;
 }

@@ -50,4 +50,7 @@ Get-PinnedFile 'https://raw.githubusercontent.com/contentauth/c2patool/v0.28.2/L
 foreach ($taskFormatSample in (Get-Content -LiteralPath (Join-Path $taskRoot 'tests/format-fixtures.json') -Raw | ConvertFrom-Json)) {
     Get-PinnedFile $taskFormatSample.url (Join-Path $taskRoot ('tests/fixtures/'+$taskFormatSample.name)) $taskFormatSample.sha256
 }
+foreach ($taskDeviceSample in (Get-Content -LiteralPath (Join-Path $taskRoot 'tests/device-fixtures.json') -Raw | ConvertFrom-Json)) {
+    Get-PinnedFile $taskDeviceSample.url (Join-Path $taskRoot ('tests/fixtures/'+$taskDeviceSample.name)) $taskDeviceSample.sha256
+}
 Write-Output 'Pinned dependencies, signed fixture and public metadata test fixtures are ready. Run scripts/build.ps1.'

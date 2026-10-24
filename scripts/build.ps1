@@ -12,7 +12,7 @@ try {
         if (!(Test-Path -LiteralPath $taskCmakePath)) { throw 'Install CMake and the Visual Studio C++ build tools.' }
     }
     $taskCtestPath = Join-Path (Split-Path -Parent $taskCmakePath) 'ctest.exe'
-    foreach ($taskDependency in @('tools\exiftool\exiftool.exe','tools\c2patool\c2patool.exe','tests\fixtures\c2pa-signed.jpg','vendor\json.hpp')) {
+    foreach ($taskDependency in @('tools\exiftool\exiftool.exe','tools\c2patool\c2patool.exe','tests\fixtures\c2pa-signed.jpg','vendor\json.hpp','data\device-models.tsv','tests\fixtures\device-upstream-Canon.jpg')) {
         if (!(Test-Path -LiteralPath $taskDependency)) { throw "Missing $taskDependency. Run scripts/bootstrap-dependencies.ps1 once with network access." }
     }
     & python tests/make_fixtures.py

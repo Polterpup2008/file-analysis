@@ -75,7 +75,7 @@ void configurePresentation(){
  SendMessageW(controls[Detail],EM_SETLIMITTEXT,32*1024*1024,0);SendMessageW(controls[Detail],WM_SETFONT,reinterpret_cast<WPARAM>(simple()?font:mono),TRUE);
  SendMessageW(controls[Search],EM_SETCUEBANNER,0,reinterpret_cast<LPARAM>(batchScope()?L"Query all scanned files, then press Find":simple()?L"Filter findings; All files searches full values":L"Filter rows; All files searches full values"));
 }
-Json report(){Json j={{"application","File Analysis"},{"version",FA_VERSION},{"schema_version",5},{"files",Json::array()},{"batch_errors",batchErrors},{"cancelled",analysisCancelled}};for(auto& r:results)j["files"].push_back(r.json());if(!comparison.is_null())j["comparison"]=comparison;return j;}
+Json report(){Json j={{"application","File Analysis"},{"version",FA_VERSION},{"schema_version",6},{"files",Json::array()},{"batch_errors",batchErrors},{"cancelled",analysisCancelled}};for(auto& r:results)j["files"].push_back(r.json());if(!comparison.is_null())j["comparison"]=comparison;return j;}
 std::array<std::string,7> rowText(const Row& row){
  if(row.kind==12){const auto& m=batchSearch->matches.at(row.index);return {utf8(results.at(m.file).path.filename().wstring()),m.category+" | "+m.name,m.snippet,m.source,"","","Double-click or Open match to inspect original evidence"};}
  if(row.kind==11){const auto& p=results.at(selectedFile).previews.at(row.index);return {"Embedded preview",simple()?p.field.substr(p.field.find_last_of(':' )+1):p.field,p.format+" | "+std::to_string(p.bytes.size())+" bytes"+(p.width?" | "+std::to_string(p.width)+" x "+std::to_string(p.height):""),"ExifTool binary extraction",p.sha256,"Unavailable",p.warning};}

@@ -46,8 +46,27 @@ void photoFindings(const Result& r,std::vector<SimpleFinding>& out) {
   if(!make.empty()&&!fold(model).starts_with(fold(make)))camera=make+" — "+model;
  }else if(!make.empty())camera=make+"; device model not recovered";
  else camera=str(r.photo,"device_status")=="not_evaluated"?"Not evaluated — metadata reader unavailable":"Not recovered from embedded metadata";
- out.push_back({"Photo / device","Camera / device reported",camera,evidence({"make","model"})});
- for(const auto& warning:member(r.photo,"warnings",emptyArray))out.push_back({"Attention","Capture metadata disagreement",display(warning),evidence({"make","model","lens_make","lens_model","body_serial","lens_serial"})});
+ const auto& recognition=member(r.photo,"recognition");const auto& names=member(recognition,"names",emptyArray);
+ std::string recognitionDetail="\r\n\r\nDevice name recognition: "+str(recognition,"status")+"\r\n";
+ const auto& catalogue=member(recognition,"catalogue");
+ recognitionDetail+="Offline catalogue: "+str(catalogue,"status")+"; snapshot "+str(catalogue,"snapshot_date")+"\r\n";
+ for(const auto& entry:member(recognition,"entries",emptyArray)){
+  recognitionDetail+=str(entry,"field")+" = "+display(member(entry,"recorded_value"))+" ["+str(entry,"status")+"]\r\n";
+  for(const auto& name:member(entry,"names",emptyArray))recognitionDetail+="  "+str(name,"display_name")+"\r\n  Basis: "+str(name,"basis")+"\r\n  Source: "+str(name,"source")+"\r\n  "+str(name,"reference")+"\r\n";
+ }
+ if(member(recognition,"truncated")==true)recognitionDetail+="Recognition display is incomplete because its input/candidate limit was reached.\r\n";
+ recognitionDetail+=str(recognition,"limitation");
+ bool conflicting=member(property("make"),"conflict")==true||member(property("model"),"conflict")==true;
+ if(names.size()==1&&str(recognition,"status")=="matched"&&!conflicting){camera=str(names[0],"display_name");if(!model.empty())camera+="; recorded: "+model;}
+ else if(model.empty()&&!member(property("model_id"),"values",emptyArray).empty())camera="Vendor model identifier recorded; select for decoded names and sources";
+ out.push_back({"Photo / device","Camera / device reported",camera,evidence({"make","model","model_id"})+recognitionDetail});
+ if(!names.empty()){
+  std::string summary;for(const auto& name:names){if(!summary.empty())summary+=" / ";summary+=str(name,"display_name");}
+  out.push_back({"Photo / device",names.size()==1?"Device name recognised":"Multiple device name matches",summary,recognitionDetail});
+ }
+ if(str(catalogue,"status")!="verified"&&str(catalogue,"status")!="not_needed")out.push_back({"Attention","Model catalogue unavailable",str(catalogue,"status"),"Recorded device fields remain available. Retail-name lookup could not use its expected offline snapshot.\r\n"+recognitionDetail});
+ if(member(recognition,"truncated")==true)out.push_back({"Attention","Device recognition incomplete","Source/candidate limit reached; select for retained matches",recognitionDetail});
+ for(const auto& warning:member(r.photo,"warnings",emptyArray))out.push_back({"Attention","Capture metadata disagreement",display(warning),evidence({"make","model","model_id","lens_make","lens_model","body_serial","lens_serial"})});
  auto lens=values("lens_model"),lensMake=values("lens_make");if(!lens.empty()||!lensMake.empty())out.push_back({"Photo / device","Lens reported",lensMake.empty()?lens:lensMake+(lens.empty()?"":" — "+lens),evidence({"lens_make","lens_model"})});
  auto date=values("capture_time"),offset=values("capture_offset"),subseconds=values("capture_subseconds");
  if(!date.empty()||!offset.empty()||!subseconds.empty())out.push_back({"Photo / device","Capture time recorded",(date.empty()?"Capture date not recovered":date)+(offset.empty()?"":"; offset "+offset),evidence({"capture_time","capture_offset","capture_subseconds"})});

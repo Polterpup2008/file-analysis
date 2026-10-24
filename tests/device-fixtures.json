@@ -1,0 +1,52 @@
+[
+  {
+    "name": "device-upstream-Canon.jpg",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Canon.jpg",
+    "sha256": "98c290283dbff10950bd0eac63bf95804fd09661de727df4f2946d203ca9e7a2"
+  },
+  {
+    "name": "device-upstream-Canon1DmkIII.jpg",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Canon1DmkIII.jpg",
+    "sha256": "d754d0f8d2eed21e6d7e1ab1a7bac7d451ba50730a1919aaaf97c3482256d5bd"
+  },
+  {
+    "name": "device-upstream-Sony.jpg",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Sony.jpg",
+    "sha256": "7376ad79cad2ac750e765ad253df2f3ae297c2089a562d00d88e9338ea8980b7"
+  },
+  {
+    "name": "device-upstream-Pentax.jpg",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Pentax.jpg",
+    "sha256": "554756d3cbbebad49d8ab67ecb8add51740a022015f97d6bd97acce87551a3c6"
+  },
+  {
+    "name": "device-upstream-OlympusE1.jpg",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/OlympusE1.jpg",
+    "sha256": "7d76d6421265420326bb43845e15732c45d1ffe5866df2a63553ae0bc8e228f8"
+  },
+  {
+    "name": "device-upstream-Nikon.nef",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Nikon.nef",
+    "sha256": "6fae30a2809b52ece100316f33a3fade4b65cf5690af2d62bb00f44ae052bdd6"
+  },
+  {
+    "name": "device-upstream-Panasonic.rw2",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Panasonic.rw2",
+    "sha256": "431a1239713ce1bca8f0b422b9a094372246669432060e2a0a21d1fd2f761678"
+  },
+  {
+    "name": "device-upstream-FujiFilm.raf",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/FujiFilm.raf",
+    "sha256": "e12e30bd0cf5f160b82b93f043696c04d1d5f4628f1fdd19abdab9f8328d8bf0"
+  },
+  {
+    "name": "device-upstream-Apple.jpg",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Apple.jpg",
+    "sha256": "113a01f606e2508bda673503e1d62ea94e7fada9f92872880d69bc91f3d45ec8"
+  },
+  {
+    "name": "device-upstream-Google.jpg",
+    "url": "https://raw.githubusercontent.com/exiftool/exiftool/2200871d9cef988051d2a99d67df3bda6cbb30a8/t/images/Google.jpg",
+    "sha256": "156a7510315a4fb27c97d12a6dedb4e791eaf26e4810458e86b629f862e34651"
+  }
+]

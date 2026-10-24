@@ -57,7 +57,7 @@ Json structureGroups(const Result&, bool groupIdat=true);
 Json redactLocalPaths(const Json&, const std::vector<fs::path>&);
 Result analyze(const fs::path&, const Options&, std::atomic_bool&, const std::function<void(unsigned)>& progress={});
 void parseGeneration(Result&);
-void summarizePhoto(Result&);
+void summarizePhoto(Result&, const fs::path& deviceCatalog={});
 Json compare(const Result&, const Result&, std::atomic_bool* cancel=nullptr);
 std::vector<fs::path> enumerate(const fs::path&, bool recursive, std::atomic_bool&, std::vector<std::string>& errors);
 void exportReport(const fs::path&, const Json&, const std::string& format, const std::vector<fs::path>& originals={}, std::atomic_bool* cancel=nullptr);

@@ -1,0 +1,18 @@
+{
+  "snapshot_date": "2026-10-23",
+  "google": {
+    "name": "Google Play supported devices",
+    "url": "https://storage.googleapis.com/play_public/supported_devices.csv",
+    "documentation": "https://support.google.com/googleplay/answer/1727131?hl=en",
+    "sha256": "b73f5f300887cfaa0b77f7c2437e36081a620cdb86f007460e58d627ef283b41",
+    "note": "Factual Retail Branding, Model and Marketing Name relationships. No Device codename matching, specifications or images. The upstream URL is mutable; ordinary builds use the bundled derived snapshot. Android entries also include tablets, TVs and other devices, not exclusively phones."
+  },
+  "apple": {
+    "name": "DeviceKit hardware identifier names",
+    "revision": "19528aa07e1426626ea9fb2c4a161edf43c4f9e8",
+    "url": "https://raw.githubusercontent.com/devicekit/DeviceKit/19528aa07e1426626ea9fb2c4a161edf43c4f9e8/Source/Device.swift.gyb",
+    "sha256": "38b85fda0ff4ff6e5d045bb055a69118efbb78131a53cf51b9bde7b141428bcc",
+    "license": "MIT; DEVICEKIT-LICENSE.txt",
+    "note": "Literal iPhone/iPad/iPod hardware identifier/name pairs from the maintainer's catalogue; not an Apple attestation. The upstream template is parsed as data and never executed."
+  }
+}
