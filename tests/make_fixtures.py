@@ -76,7 +76,7 @@ print(f'Generated fixtures in {p}')
 
 # Synthetic EXIF/XMP camera claims. These are fixtures, not real capture evidence.
 # An ordinary TIFF IFD tree is embedded unchanged in PNG eXIf and JPEG APP1.
-def camera_tiff():
+def camera_tiff(make='Fixture Camera Co', model='Fixture Phone 4', canon_model_id=None, sony_model_id=None):
     data = bytearray(b'II\x2a\0\0\0\0\0')
     def ascii_value(value):
         payload = value.encode('ascii') + b'\0'
@@ -102,7 +102,7 @@ def camera_tiff():
     gps = ifd([(0, (1, 4, b'\2\3\0\0')), (1, ascii_value('N')),
                (2, rational((0, 1), (0, 1), (0, 1))), (3, ascii_value('E')),
                (4, rational((0, 1), (0, 1), (0, 1)))])
-    exif = ifd([(0x829a, rational((1, 125))), (0x829d, rational((28, 10))),
+    exif_entries = [(0x829a, rational((1, 125))), (0x829d, rational((28, 10))),
                 (0x8827, short(200)), (0x9000, (7, 4, b'0232')),
                 (0x9003, ascii_value('2024:06:15 12:34:56')),
                 (0x9011, ascii_value('+02:00')), (0x9209, short(0)),
@@ -111,13 +111,29 @@ def camera_tiff():
                 (0xa405, short(52)), (0xa431, ascii_value('FIXTURE-ONLY-001')),
                 (0xa433, ascii_value('Fixture Optics')),
                 (0xa434, ascii_value('35mm F2.8 fixture lens')),
-                (0xa435, ascii_value('FIXTURE-LENS-002'))])
-    root = ifd([(0x010f, ascii_value('Fixture Camera Co')),
-                (0x0110, ascii_value('Fixture Phone 4')),
-                (0x011a, rational((72, 1))), (0x011b, rational((72, 1))),
-                (0x0128, short(2)), (0x8769, long(exif)), (0x8825, long(gps))])
+                (0xa435, ascii_value('FIXTURE-LENS-002'))]
+    if canon_model_id is not None:
+        note = struct.pack('<H', 1) + struct.pack('<HHII', 0x10, 4, 1, canon_model_id) + struct.pack('<I', 0)
+        exif_entries.append((0x927c, (7, len(note), note)))
+    if sony_model_id is not None:
+        note = b'SONY DSC \0\0\0' + struct.pack('<H', 1) + struct.pack('<HHII', 0xb001, 3, 1, sony_model_id) + struct.pack('<I', 0)
+        exif_entries.append((0x927c, (7, len(note), note)))
+    exif = ifd(exif_entries)
+    root_entries = [(0x011a, rational((72, 1))), (0x011b, rational((72, 1))),
+                    (0x0128, short(2)), (0x8769, long(exif)), (0x8825, long(gps))]
+    if make is not None: root_entries.append((0x010f, ascii_value(make)))
+    if model is not None: root_entries.append((0x0110, ascii_value(model)))
+    root = ifd(root_entries)
     struct.pack_into('<I', data, 4, root)
     return bytes(data)
+
+# Sourced model-code relationships tested through the actual metadata reader.
+for name, make, model in [('samsung', 'Samsung', 'SM-S918B'), ('apple', 'Apple', 'iPhone15,2'),
+                          ('xiaomi', 'Xiaomi', '23021RAAEG')]:
+    png('device-'+name+'.png', chunk('eXIf', camera_tiff(make, model)))
+(p/'device-samsung.tiff').write_bytes(camera_tiff('Samsung', 'SM-S918B'))
+png('device-canon-id.png', chunk('eXIf', camera_tiff('Canon', None, 0x80000175)))
+png('device-sony-id.png', chunk('eXIf', camera_tiff('SONY', None, sony_model_id=388)))
 
 photo_exif = camera_tiff()
 png('camera.png', chunk('eXIf', photo_exif))
@@ -144,6 +160,8 @@ if signed_sample.exists():
         position += length
     app1 = b'Exif\0\0' + photo_exif
     (p/'camera.jpg').write_bytes(jpeg_image[:2] + b'\xff\xe1' + struct.pack('>H', len(app1)+2) + app1 + jpeg_image[2:])
+    phone_app1 = b'Exif\0\0' + camera_tiff('Samsung', 'SM-S918B')
+    (p/'device-samsung.jpg').write_bytes(jpeg_image[:2] + b'\xff\xe1' + struct.pack('>H', len(phone_app1)+2) + phone_app1 + jpeg_image[2:])
 
     def with_thumbnail(tiff, thumbnail):
         tiff = bytearray(tiff)
