@@ -9,7 +9,7 @@ Written in C++20 with native Win32 controls. Analysis runs locally and offline b
 Download the **FileAnalysis-<version>-Windows-x64.zip** asset from the [latest release](https://github.com/Polterpup2008/file-analysis/releases/latest). Requires Windows 10 or 11, 64-bit.
 
 1. Choose the **Windows-x64 ZIP**, then extract it to a folder. GitHub’s **Source code** archives contain source files and require a build.
-2. Run `file-analysis.exe` inside it. Keep the adjacent `exiftool` and `c2patool` folders intact.
+2. Run `file-analysis.exe` inside it. Keep the adjacent `exiftool`, `c2patool` and `data` folders intact.
 3. Choose **Open File**, select a file, and read its findings. Use **View: Detailed** when you want the underlying evidence.
 
 The portable download includes its parser tools and required runtime files. You do not need Visual Studio, Python, or a separate parser installation to use it. Administrator access is not required. The executable is not code-signed.
@@ -32,7 +32,7 @@ Native deep structure inspection covers **PNG and JPEG**. Other recognized forma
 
 This app reads recorded evidence. It is **not a visual AI detector**: missing metadata does not prove a file is human-made. A recorded SynthID action is not an independent watermark test. A valid signature and a trusted certificate do not prove the factual truth of every action or the identity of a human creator.
 
-**1.0** adds preview recovery, batch search, readable comparison and additional generation conventions. Test evidence and practical limits are recorded in [the acceptance audit](docs/AUDIT-1.0.md) and [desktop checks](docs/GUI-TESTING.md).
+**1.1** focuses on camera and phone recognition: exact offline model-name lookup, source-linked vendor body IDs and DNG model fields. **1.0** added preview recovery, batch search, readable comparison and additional generation conventions. Test evidence and practical limits are recorded in [the 1.1 recognition audit](docs/AUDIT-1.1.md), [the 1.0 acceptance audit](docs/AUDIT-1.0.md) and [desktop checks](docs/GUI-TESTING.md).
 
 ## Use
 
@@ -58,7 +58,7 @@ This app reads recorded evidence. It is **not a visual AI detector**: missing me
 
 This is **not guaranteed anonymization**. Retained dates, camera/lens/software values and file fingerprints can identify a file or contain personal information. Review the result before sharing. Share report changes the exported summary only; originals and the complete in-memory analysis remain intact. **Export Results...** still produces the full forensic report, with its existing optional local-path redaction.
 
-JSON schema 5 retains `files[].origin_summary`, `files[].privacy`, capture metadata and `files[].embedded_previews` resource summaries. Payload bytes are extracted separately, not embedded in reports. Share reports are explicitly labeled `report_mode: share_summary`, carry the omission policy and limitations, and contain a deliberately smaller set of evidence. They are not interchangeable with full forensic reports.
+JSON schema 6 retains `files[].origin_summary`, `files[].privacy`, capture metadata and `files[].embedded_previews` resource summaries. Payload bytes are extracted separately, not embedded in reports. Share reports are explicitly labeled `report_mode: share_summary`, carry the omission policy and limitations, and contain a deliberately smaller set of evidence. They are not interchangeable with full forensic reports.
 
 ## Camera and capture metadata
 
@@ -68,9 +68,23 @@ When available, additional findings show the lens, embedded capture date and ori
 
 The summary recognizes standard EXIF and the relevant XMP camera namespaces, selected MakerNote identity tags, and QuickTime Apple/Android make/model fields. It operates on metadata returned by ExifTool, including supported HEIF and camera RAW files; this adds no native RAW or HEIF pixel decoder. Camera claims in ICC profiles, scanner diagnostics, generation settings, thumbnails and separately embedded documents are excluded from the device summary. Different recorded device identities are shown together with an explicit disagreement finding rather than choosing one as fact.
 
-Camera tags can be edited, forged or carried over from another image. They do not prove that the current file was photographed, which physical device produced it, or who took it. Internal device codes are not expanded to guessed retail names. No camera is inferred from pixels, filenames, editor names or a lens alone. Absent metadata does not establish AI generation. Capture timestamps are not filesystem timestamps; an absent timezone is never silently treated as UTC. GPS is displayed without contacting a map service.
+Camera tags can be edited, forged or carried over from another image. They do not prove that the current file was photographed, which physical device produced it, or who took it. Retail-name lookup uses exact sourced catalogue relationships; unknown codes are not expanded by guessing. No camera is inferred from pixels, filenames, editor names or a lens alone. Absent metadata does not establish AI generation. Capture timestamps are not filesystem timestamps; an absent timezone is never silently treated as UTC. GPS is displayed without contacting a map service.
 
 **Local-path redaction does not remove GPS coordinates or serial numbers.** Reports preserve this evidence; review it before sharing. The `files[].photo` object retains status, properties, original source fields, numeric values, disagreements and limits. CSV and text retain the camera summary and source evidence too.
+
+## Camera and phone recognition in 1.1
+
+The bundled offline catalogue contains **50,930 factual model/name records** from the Google Play supported-device list and a pinned DeviceKit snapshot (170 iPhone/iPad/iPod hardware identifiers). This is a count of catalogue relationships, not a claim to identify that many physical devices or phones. The Android list also includes tablets, televisions and other equipment. The snapshot date is 2026-10-23; new or omitted models remain unrecognised.
+
+A recorded model such as `SM-S918B` can show **Samsung Galaxy S23 Ultra**, and `iPhone15,2` can show **Apple iPhone 14 Pro**, with the original code still visible. Matching folds ASCII case and outer whitespace, checks the recorded manufacturer, and pairs make/model from the same metadata group where available. A model without a manufacturer can return several candidates; the app lists them rather than choosing one. Selected manufacturer spelling aliases are explicit; device codenames, prefix/fuzzy matching and guesses from lenses, software, file names or pixels are not used.
+
+Camera recognition also includes reader-decoded **CanonModelID**, **SonyModelID**, **PentaxModelID** and Olympus **CameraType/CameraType2**, plus the EXIF/DNG **UniqueCameraModel** field. Vendor fields are allowlisted by their actual namespaces: a generic CameraType or a model in a thumbnail/profile/subdocument is not a camera-body identity. Unknown/numeric-only IDs remain unresolved. Reader-decoded strings can contain regional aliases rather than one retail name.
+
+Select **Camera / device reported** or **Device name recognised** in Simple for the recorded fields, matching basis, catalogue/reader source and interpretation limits. Detailed > Metadata > Photo / device and full JSON/CSV/text exports retain `photo.recognition`, every original code and numeric ID, candidates and catalogue identity. Share summaries carry a smaller `recognized_device_names` list; raw recognition/source records are excluded.
+
+The catalogue is loaded from `data/device-models.tsv`, verified against its compiled SHA-256 and cached as an immutable snapshot for the process. Missing or altered data disables catalogue matches and produces a visible finding; original metadata and independently decoded vendor IDs remain available. No online lookup or automatic catalogue update occurs. Rebuild the catalogue intentionally using the pinned inputs and `scripts/build-device-catalog.py`; normal builds use the checked-in snapshot.
+
+Recognition is limited to 64 model-source records and eight candidates per record, with explicit truncation. Large model values remain in original evidence but are not lookup keys. A catalogue match is a statement about recorded metadata, not proof of a physical camera/phone, a photographer or the truth of the file's origin.
 
 ## Embedded previews and generation records
 
