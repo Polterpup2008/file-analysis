@@ -183,7 +183,7 @@ Result analyze(const fs::path& path,const Options& options,std::atomic_bool& can
   if(progress)progress(95);
   analyzeProvenance(r,options,cancel);
   parseGeneration(r);
-  summarizePhoto(r);
+  summarizePhoto(r,options.exiftool.empty()?fs::path():fs::absolute(options.exiftool).parent_path().parent_path()/L"data"/L"device-models.tsv");
   analyzePreviews(r,options,cancel);
   field(r,"Embedded resources","Preview extraction status",r.previewStatus,"ExifTool binary extraction",nullptr,{}, {},"Selected binary tags only; no original image or metadata is modified.");
   for(const auto& p:r.previews)field(r,"Embedded resources",p.field+" (recovered payload)",Json{{"format",p.format},{"size",p.bytes.size()},{"sha256",p.sha256},{"width",p.width},{"height",p.height},{"viewable",p.viewable}},"ExifTool binary extraction",nullptr,{}, {},p.warning);

@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "device_recognition.hpp"
 #include <algorithm>
 #include <cctype>
 #include <map>
@@ -9,7 +10,8 @@ namespace {
 struct Property { const char* key; const char* title; const char* tags; const char* note; bool identity; };
 constexpr Property properties[]{
  {"make","Device manufacturer","make|androidmake","",true},
- {"model","Device model","model|androidmodel","The recorded model is shown as stored; internal model codes are not guessed or expanded.",true},
+ {"model","Device model","model|androidmodel|uniquecameramodel","Original model values are retained. Exact offline name matches are reported separately with their sources; unknown codes are not guessed.",true},
+ {"model_id","Vendor model identifier","canonmodelid|sonymodelid|pentaxmodelid|cameratype|cameratype2","Vendor-specific body identifiers and their reader-decoded values. Different retail aliases need not identify different physical models.",true},
  {"lens_make","Lens manufacturer","lensmake","",true},
  {"lens_model","Lens model","lensmodel|lens","Lens names are recorded claims; they do not independently identify the camera body.",true},
  {"capture_time","Capture time recorded","datetimeoriginal","This is an embedded capture-time claim, not a filesystem timestamp. No timezone is assumed when none is recorded.",false},
@@ -54,6 +56,9 @@ bool sourceAllowed(const Field& f,const Property& p,const std::vector<std::strin
   if(component.starts_with("Doc")&&component.size()>3&&std::isdigit(static_cast<unsigned char>(component[3])))return false;
  }
  auto family=path[0];
+ if(std::string_view(p.key)=="model_id")return family=="MakerNotes"&&path.size()>2&&
+  ((path[1]=="Canon"&&path.back()=="CanonModelID")||(path[1]=="Sony"&&path.back()=="SonyModelID")||
+   (path[1]=="Pentax"&&path.back()=="PentaxModelID")||(path[1]=="Olympus"&&listed("CameraType|CameraType2",path.back())));
  if(family=="EXIF")return true;
  if(family=="XMP")return path.size()>2&&listed("XMP-tiff|XMP-exif|XMP-exifEX|XMP-aux",path[1]);
  if(family=="MakerNotes")return p.identity; // Vendor exposure encodings can differ from EXIF.
@@ -66,12 +71,12 @@ bool image(const Result& r) {
  return false;
 }
 }
-void summarizePhoto(Result& r) {
+void summarizePhoto(Result& r,const fs::path& deviceCatalog) {
  // Safe to refresh the projection without duplicating its own derived fields.
  std::erase_if(r.fields,[](const Field& f){return f.category=="Photo / device";});
  const std::string limitation="Embedded camera, time and GPS tags can be edited, copied or forged. They do not prove which physical device captured this file, who took it, or that it is a photograph. Missing tags do not establish AI generation. No device is inferred from pixels, filenames, software names or a lens alone.";
  Json found=Json::array(),warnings=Json::array();
- bool make=false,model=false;
+ bool make=false,model=false,identifier=false;
  for(const auto& p:properties) {
   Json values=Json::array(),sources=Json::array();std::set<std::string> distinct;
   for(const auto& f:r.fields) {
@@ -89,16 +94,22 @@ void summarizePhoto(Result& r) {
   if(conflict)warnings.push_back(warning);
   found.push_back({{"key",p.key},{"title",p.title},{"values",values},{"sources",sources},{"conflict",conflict},{"warning",warning},{"note",p.note}});
   if(std::string_view(p.key)=="make")make=true;if(std::string_view(p.key)=="model")model=true;
+  if(std::string_view(p.key)=="model_id")identifier=true;
  }
  if(!image(r)&&found.empty()){r.photo=nullptr;return;}
  bool extracted=metadataReadSucceeded(r);
- r.photo={{"device_status",model?"model_reported":make?"manufacturer_only":extracted?"not_reported":"not_evaluated"},{"metadata_reader_available",extracted},{"properties",found},{"warnings",warnings},{"limitation",limitation}};
+ r.photo={{"device_status",model?"model_reported":identifier?"model_identifier_reported":make?"manufacturer_only":extracted?"not_reported":"not_evaluated"},{"metadata_reader_available",extracted},{"properties",found},{"warnings",warnings},{"limitation",limitation}};
+ r.photo["recognition"]=recognizeDevices(r.photo,deviceCatalog);
  for(const auto& item:found) {
   std::string value;for(const auto& v:item["values"]){if(!value.empty())value+=" / ";value+=v.get<std::string>();}
   auto note=item["note"].get<std::string>();auto warning=item["warning"].get<std::string>();
   r.fields.push_back({"Photo / device",item["title"],"Capture metadata summary",warning.empty()?note:warning+" "+note,value,item["sources"],{},{}});
  }
- std::string status=model?"Device model reported in embedded metadata":make?"Manufacturer reported; device model not recovered":extracted?"No device make or model recovered":"Not evaluated: metadata reader unavailable or unsuccessful";
+ const auto& recognition=r.photo["recognition"];
+ std::string names;for(const auto& name:recognition["names"]){if(!names.empty())names+=" / ";names+=name["display_name"].get<std::string>();}
+ if(!names.empty())r.fields.push_back({"Photo / device","Recognised device names","Device name recognition",recognition["limitation"],names,recognition,{},{}});
+ r.fields.push_back({"Photo / device","Device name lookup","Device name recognition",recognition["limitation"],recognition["status"],recognition,{},{}});
+ std::string status=model?"Device model reported in embedded metadata":identifier?"Vendor model identifier reported in embedded metadata":make?"Manufacturer reported; device model not recovered":extracted?"No device make or model recovered":"Not evaluated: metadata reader unavailable or unsuccessful";
  r.fields.push_back({"Photo / device","Device identification","Capture metadata summary",limitation,status,nullptr,{},{}});
 }
 }
